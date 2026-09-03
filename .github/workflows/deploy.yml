@@ -1,0 +1,42 @@
+name: Deploy para produção
+
+# Publica na Vercel a cada push em main. Contorna a integração nativa
+# Git↔Vercel: o repositório (monteiro-lab/agendaapp) e o projeto na Vercel
+# (ndmg-devs-projects/agendaapp) pertencem a contas diferentes, e o GitHub
+# App da Vercel não atravessa contas dessa forma. Em vez disso, chamamos a
+# CLI da Vercel direto com um token, do mesmo jeito que se faz manualmente.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Puxar configuração do projeto
+        run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Build
+        run: npx vercel build --prod --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        run: npx vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
