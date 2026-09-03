@@ -23,7 +23,16 @@ import {
 import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
-import { IconeCheck, IconeChevronDir, IconeChevronEsq, IconeCirculo, IconeEngrenagem, IconeMais } from './icones'
+import Buscar, { type DestinoBusca } from './Buscar'
+import {
+  IconeBusca,
+  IconeCheck,
+  IconeChevronDir,
+  IconeChevronEsq,
+  IconeCirculo,
+  IconeEngrenagem,
+  IconeMais,
+} from './icones'
 import { sincronizarLembretes } from '../push/sincronizar'
 import Importar from './Importar'
 
@@ -50,6 +59,8 @@ export default function Agenda() {
   })
   const [editando, setEditando] = useState<SlotEmEdicao | null>(null)
   const [ajustesAbertos, setAjustesAbertos] = useState(false)
+  const [buscaAberta, setBuscaAberta] = useState(false)
+  const [destacado, setDestacado] = useState<string | null>(null)
 
   const datas = useMemo(() => datasDaSemana(segunda), [segunda])
   const hoje = hojeISO()
@@ -144,6 +155,14 @@ export default function Agenda() {
     return mapa
   }, [dados, datas])
 
+  function irParaResultado(destino: DestinoBusca) {
+    setSegunda(inicioDaSemana(destino.data))
+    setDiaAberto(destino.diaSemana)
+    setBuscaAberta(false)
+    setDestacado(destino.chave)
+    setTimeout(() => setDestacado(null), 2500)
+  }
+
   async function alternarRealizada(slot: Slot) {
     const atual =
       slot.ocorrencia ??
@@ -169,6 +188,13 @@ export default function Agenda() {
           </div>
           <button aria-label="Próxima semana" onClick={() => setSegunda(somarDias(segunda, 7))}>
             <IconeChevronDir />
+          </button>
+          <button
+            className="ajustes-abrir"
+            aria-label="Buscar paciente"
+            onClick={() => setBuscaAberta(true)}
+          >
+            <IconeBusca />
           </button>
           <button
             className="ajustes-abrir"
@@ -225,7 +251,15 @@ export default function Agenda() {
                   const status = slot.ocorrencia?.status ?? 'agendada'
                   const vago = !slot.pacienteId
                   return (
-                    <li key={slot.chave} className={['slot', status, vago ? 'vago' : ''].join(' ')}>
+                    <li
+                      key={slot.chave}
+                      className={[
+                        'slot',
+                        status,
+                        vago ? 'vago' : '',
+                        slot.chave === destacado ? 'destacado' : '',
+                      ].join(' ')}
+                    >
                       <button
                         className="slot-corpo"
                         onClick={() => setEditando({ data, slot, diaSemana: dia })}
@@ -272,6 +306,9 @@ export default function Agenda() {
 
       {editando && <EditorSlot em={editando} aoFechar={() => setEditando(null)} />}
       {ajustesAbertos && <Ajustes aoFechar={() => setAjustesAbertos(false)} />}
+      {buscaAberta && (
+        <Buscar aoFechar={() => setBuscaAberta(false)} aoEscolher={irParaResultado} />
+      )}
     </div>
   )
 }
