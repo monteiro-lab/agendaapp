@@ -17,6 +17,7 @@ import {
   type StatusOcorrencia,
 } from '../db'
 import type { Slot } from './Agenda'
+import { IconeAlerta, IconeLixeira } from './icones'
 
 export interface SlotEmEdicao {
   data: string
@@ -261,7 +262,12 @@ export default function EditorSlot({
           </fieldset>
         )}
 
-        {erro && <p className="erro">{erro}</p>}
+        {erro && (
+          <p className="erro">
+            <IconeAlerta width={16} height={16} />
+            {erro}
+          </p>
+        )}
 
         <div className="folha-botoes">
           <button className="primario" onClick={() => void salvar()} disabled={salvando}>
@@ -270,7 +276,7 @@ export default function EditorSlot({
           <button onClick={aoFechar}>Cancelar</button>
           {slot && (
             <button className="perigo" onClick={() => void remover()}>
-              Remover
+              <IconeLixeira width={16} height={16} /> Remover
             </button>
           )}
         </div>

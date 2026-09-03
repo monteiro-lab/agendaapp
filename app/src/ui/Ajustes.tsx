@@ -10,6 +10,7 @@ import {
   marcarDestravado,
   type TipoTrava,
 } from '../seguranca/trava'
+import { IconeAlerta, IconeCadeado, IconeCheck, IconeImpressaoDigital, IconeLixeira } from './icones'
 
 export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [tipo, setTipo] = useState<TipoTrava>('nenhuma')
@@ -97,9 +98,15 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
 
           <div className="ajuste-botoes">
             {biometriaDisponivel() && tipo !== 'biometria' && (
-              <button onClick={() => void ligarBiometria()}>Usar biometria</button>
+              <button onClick={() => void ligarBiometria()}>
+                <IconeImpressaoDigital width={16} height={16} /> Usar biometria
+              </button>
             )}
-            {tipo !== 'pin' && <button onClick={() => setPedindoPin(true)}>Usar PIN</button>}
+            {tipo !== 'pin' && (
+              <button onClick={() => setPedindoPin(true)}>
+                <IconeCadeado width={16} height={16} /> Usar PIN
+              </button>
+            )}
             {tipo !== 'nenhuma' && (
               <button className="perigo" onClick={() => void desligar()}>
                 Desligar
@@ -155,12 +162,22 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
             ids sem significado — não há cópia para restaurar.
           </p>
           <button className="perigo" onClick={() => void apagarTudo()}>
-            Apagar todos os dados locais
+            <IconeLixeira width={16} height={16} /> Apagar todos os dados locais
           </button>
         </section>
 
-        {aviso && <p className="ajuste-aviso">{aviso}</p>}
-        {erro && <p className="erro">{erro}</p>}
+        {aviso && (
+          <p className="ajuste-aviso">
+            <IconeCheck width={16} height={16} />
+            {aviso}
+          </p>
+        )}
+        {erro && (
+          <p className="erro">
+            <IconeAlerta width={16} height={16} />
+            {erro}
+          </p>
+        )}
 
         <div className="folha-botoes">
           <button onClick={aoFechar}>Fechar</button>

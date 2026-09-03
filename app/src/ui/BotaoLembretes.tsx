@@ -6,6 +6,7 @@ import {
   type EstadoPush,
 } from '../push/inscricao'
 import { sincronizarLembretes } from '../push/sincronizar'
+import { IconeSino } from './icones'
 
 const TEXTO: Record<EstadoPush, string> = {
   'sem-suporte': 'Lembretes indisponíveis neste navegador',
@@ -62,7 +63,7 @@ export default function BotaoLembretes() {
         onClick={() => (podeAtivar ? void ativar() : estado === 'ligada' ? void desativar() : undefined)}
         disabled={ocupado || (!podeAtivar && estado !== 'ligada')}
       >
-        <span className="lembretes-bolinha" />
+        <IconeSino width={16} height={16} />
         {ocupado ? 'aguarde…' : TEXTO[estado]}
       </button>
       {aviso && <p className="lembretes-aviso">{aviso}</p>}

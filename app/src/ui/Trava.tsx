@@ -6,6 +6,7 @@ import {
   marcarDestravado,
   type TipoTrava,
 } from '../seguranca/trava'
+import { IconeAlerta, IconeCadeado, IconeImpressaoDigital } from './icones'
 
 /** Tela de bloqueio. Nada da agenda é renderizado atrás dela. */
 export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
@@ -46,6 +47,9 @@ export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
   return (
     <div className="trava">
       <div className="trava-caixa">
+        <span className="trava-icone">
+          {tipo === 'biometria' ? <IconeImpressaoDigital /> : <IconeCadeado />}
+        </span>
         <h1>Agenda</h1>
         <p>Esta agenda está protegida.</p>
 
@@ -74,7 +78,12 @@ export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
           </form>
         )}
 
-        {erro && <p className="erro">{erro}</p>}
+        {erro && (
+          <p className="erro">
+            <IconeAlerta width={16} height={16} />
+            {erro}
+          </p>
+        )}
 
         {tipo === 'pin' && (
           <p className="trava-nota">

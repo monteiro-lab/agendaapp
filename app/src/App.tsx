@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Agenda from './ui/Agenda'
 import Trava from './ui/Trava'
 import { marcarDestravado, precisaDestravar } from './seguranca/trava'
+import { IconeAlerta } from './ui/icones'
 
 export default function App() {
   const [instalado, setInstalado] = useState(true)
@@ -49,8 +50,11 @@ export default function App() {
       <Agenda />
       {!instalado && (
         <p className="dica">
-          No iPhone: <strong>Compartilhar → Adicionar à Tela de Início</strong>. Os lembretes
-          só funcionam com o app instalado.
+          <IconeAlerta width={18} height={18} />
+          <span>
+            No iPhone: <strong>Compartilhar → Adicionar à Tela de Início</strong>. Os lembretes
+            só funcionam com o app instalado.
+          </span>
         </p>
       )}
     </>

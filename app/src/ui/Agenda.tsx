@@ -23,6 +23,7 @@ import {
 import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
+import { IconeCheck, IconeChevronDir, IconeChevronEsq, IconeCirculo, IconeEngrenagem, IconeMais } from './icones'
 import { sincronizarLembretes } from '../push/sincronizar'
 import Importar from './Importar'
 
@@ -158,7 +159,7 @@ export default function Agenda() {
       <header className="topo">
         <div className="semana">
           <button aria-label="Semana anterior" onClick={() => setSegunda(somarDias(segunda, -7))}>
-            &lsaquo;
+            <IconeChevronEsq />
           </button>
           <div className="semana-rotulo">
             <strong>{rotuloSemana(segunda)}</strong>
@@ -167,14 +168,14 @@ export default function Agenda() {
             </button>
           </div>
           <button aria-label="Próxima semana" onClick={() => setSegunda(somarDias(segunda, 7))}>
-            &rsaquo;
+            <IconeChevronDir />
           </button>
           <button
             className="ajustes-abrir"
             aria-label="Ajustes"
             onClick={() => setAjustesAbertos(true)}
           >
-            ⚙
+            <IconeEngrenagem />
           </button>
         </div>
 
@@ -250,7 +251,7 @@ export default function Agenda() {
                           }
                           onClick={() => void alternarRealizada(slot)}
                         >
-                          {status === 'realizada' ? '✓' : '○'}
+                          {status === 'realizada' ? <IconeCheck /> : <IconeCirculo />}
                         </button>
                       )}
                     </li>
@@ -262,7 +263,7 @@ export default function Agenda() {
                 className="adicionar"
                 onClick={() => setEditando({ data, slot: null, diaSemana: dia })}
               >
-                + adicionar horário
+                <IconeMais width={16} height={16} /> adicionar horário
               </button>
             </section>
           )
