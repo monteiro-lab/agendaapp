@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { pool } from './_lib/db'
+import { pool } from './_lib/db.js'
 import {
   apenasMetodo,
   chaveValida,
   corpoJson,
   endpointValido,
   erroInterno,
-} from './_lib/http'
+} from './_lib/http.js'
 
 /**
  * POST /api/inscrever

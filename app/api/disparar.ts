@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import webpush from 'web-push'
-import { pool } from './_lib/db'
-import { erroInterno, segredoConfere, segredoDoHeader } from './_lib/http'
+import { pool } from './_lib/db.js'
+import { erroInterno, segredoConfere, segredoDoHeader } from './_lib/http.js'
 
 /** Teto por rodada: o cron bate a cada minuto, então nunca acumula muito. */
 const MAX_POR_RODADA = 200

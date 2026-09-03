@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { pool } from './_lib/db'
+import { pool } from './_lib/db.js'
 import {
   apenasMetodo,
   corpoJson,
@@ -7,7 +7,7 @@ import {
   erroInterno,
   instanteValido,
   uidValido,
-} from './_lib/http'
+} from './_lib/http.js'
 
 /** Teto por sincronização: 30 dias de agenda cabem folgado. */
 const MAX_LEMBRETES = 500
