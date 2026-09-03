@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   atualizarOcorrencia,
+  atualizarPaciente,
   atualizarRecorrencia,
   criarOcorrencia,
   criarPaciente,
@@ -51,6 +52,9 @@ export default function EditorSlot({
   const [hora, setHora] = useState(slot?.hora ?? '')
   const [escolha, setEscolha] = useState(slot?.pacienteId ?? VAGO)
   const [nomeNovo, setNomeNovo] = useState('')
+  /** Dados do paciente em si (não da data): ficam com ele em qualquer horário. */
+  const [telefonePaciente, setTelefonePaciente] = useState('')
+  const [observacoesPaciente, setObservacoesPaciente] = useState('')
   const [regra, setRegra] = useState<RegraCobranca>(slot?.regra ?? 'sem_rotulo')
   const [status, setStatus] = useState<StatusOcorrencia>(slot?.ocorrencia?.status ?? 'agendada')
   const [observacoes, setObservacoes] = useState(slot?.ocorrencia?.observacoes ?? '')
@@ -64,6 +68,19 @@ export default function EditorSlot({
     document.addEventListener('keydown', fechaComEsc)
     return () => document.removeEventListener('keydown', fechaComEsc)
   }, [aoFechar])
+
+  // Ao escolher um paciente já existente, traz telefone/observações dele
+  // para o formulário — são dados da pessoa, não desta data específica.
+  useEffect(() => {
+    if (escolha === VAGO || escolha === NOVO) {
+      setTelefonePaciente('')
+      setObservacoesPaciente('')
+      return
+    }
+    const paciente = pacientes.find((p) => p.id === escolha)
+    setTelefonePaciente(paciente?.telefone ?? '')
+    setObservacoesPaciente(paciente?.observacoes ?? '')
+  }, [escolha, pacientes])
 
   async function resolverPacienteId(): Promise<string | null> {
     if (escolha === VAGO) return null
@@ -86,6 +103,13 @@ export default function EditorSlot({
     try {
       const horaNormal = normalizarHora(hora)
       const pacienteId = await resolverPacienteId()
+
+      if (pacienteId) {
+        await atualizarPaciente(pacienteId, {
+          telefone: telefonePaciente.trim() || undefined,
+          observacoes: observacoesPaciente.trim() || undefined,
+        })
+      }
 
       // 1) Horário novo no dia: vira recorrência (série) ou ocorrência avulsa.
       if (!slot) {
@@ -206,6 +230,30 @@ export default function EditorSlot({
               autoFocus
             />
           </label>
+        )}
+
+        {escolha !== VAGO && (
+          <fieldset className="alcance">
+            <legend>Dados do paciente</legend>
+            <label>
+              Telefone
+              <input
+                value={telefonePaciente}
+                onChange={(e) => setTelefonePaciente(e.target.value)}
+                placeholder="opcional"
+                inputMode="tel"
+              />
+            </label>
+            <label>
+              Observações do paciente
+              <textarea
+                value={observacoesPaciente}
+                onChange={(e) => setObservacoesPaciente(e.target.value)}
+                rows={2}
+                placeholder="valem para qualquer data, não só esta"
+              />
+            </label>
+          </fieldset>
         )}
 
         <label>

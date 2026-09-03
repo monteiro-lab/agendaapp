@@ -122,3 +122,21 @@ export function IconeCalendario(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function IconeBaixar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3v12M7 10l5 5 5-5" />
+      <path d="M4 19h16" />
+    </svg>
+  )
+}
+
+export function IconeSubir(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 21V9M7 14l5-5 5 5" />
+      <path d="M4 19h16" />
+    </svg>
+  )
+}

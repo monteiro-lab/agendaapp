@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { limparTudo } from '../db'
+import { useEffect, useRef, useState } from 'react'
+import { limparTudo, montarBackup, restaurarBackup } from '../db'
 import {
   ativarBiometria,
   biometriaDisponivel,
@@ -10,7 +10,15 @@ import {
   marcarDestravado,
   type TipoTrava,
 } from '../seguranca/trava'
-import { IconeAlerta, IconeCadeado, IconeCheck, IconeImpressaoDigital, IconeLixeira } from './icones'
+import {
+  IconeAlerta,
+  IconeBaixar,
+  IconeCadeado,
+  IconeCheck,
+  IconeImpressaoDigital,
+  IconeLixeira,
+  IconeSubir,
+} from './icones'
 
 export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [tipo, setTipo] = useState<TipoTrava>('nenhuma')
@@ -19,6 +27,7 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [pedindoPin, setPedindoPin] = useState(false)
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
+  const arquivoRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void lerConfig().then((c) => {
@@ -73,6 +82,49 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
     if (!confirm('Isto não tem volta e não existe cópia no servidor. Confirmar?')) return
     await limparTudo()
     setAviso('Dados apagados.')
+  }
+
+  async function exportar() {
+    setErro('')
+    try {
+      const backup = await montarBackup()
+      const arquivo = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(arquivo)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `agenda-backup-${backup.exportadoEm.slice(0, 10)}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      setAviso('Backup baixado.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  function escolherArquivo() {
+    arquivoRef.current?.click()
+  }
+
+  async function importar(evento: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = evento.target.files?.[0]
+    evento.target.value = '' // permite escolher o mesmo arquivo de novo depois
+    if (!arquivo) return
+
+    if (
+      !confirm(
+        'Importar este backup substitui TODOS os dados atuais do aparelho (pacientes, grade e ocorrências). Continuar?',
+      )
+    ) {
+      return
+    }
+    setErro('')
+    try {
+      const texto = await arquivo.text()
+      await restaurarBackup(JSON.parse(texto))
+      setAviso('Backup restaurado.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
   }
 
   return (
@@ -153,6 +205,30 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
             criptografa os dados — o lembrete precisa ler o nome do paciente com o app
             fechado, e por isso o banco local fica legível ao sistema.
           </p>
+        </section>
+
+        <section className="ajuste">
+          <h4>Backup</h4>
+          <p className="ajuste-nota">
+            Os dados dos pacientes existem só neste aparelho — o servidor não guarda
+            cópia nenhuma. Trocar de aparelho, atualizar o iOS ou limpar os dados do
+            Safari apaga a agenda para sempre, a menos que você tenha um backup.
+          </p>
+          <div className="ajuste-botoes">
+            <button onClick={() => void exportar()}>
+              <IconeBaixar width={16} height={16} /> Exportar backup (.json)
+            </button>
+            <button onClick={escolherArquivo}>
+              <IconeSubir width={16} height={16} /> Importar backup
+            </button>
+            <input
+              ref={arquivoRef}
+              type="file"
+              accept="application/json"
+              hidden
+              onChange={(e) => void importar(e)}
+            />
+          </div>
         </section>
 
         <section className="ajuste">
