@@ -1,84 +1,150 @@
 # Publicar e validar no iPhone
 
-O passo a passo do que falta para o lembrete tocar no aparelho com o app
-fechado. Três peças precisam estar de pé ao mesmo tempo:
+Estado atual do deploy e o que falta para o lembrete tocar no aparelho com o
+app fechado.
 
 ```
-[iPhone: PWA instalado]  ←push─  [Vercel: /api/*]  ←SQL→  [sua máquina: Postgres]
-                                        ↑
-                                  (crontab a cada minuto, na sua máquina)
+[iPhone: PWA instalado]  ←push─  [Vercel: /api/*]  ──SQL──  [Neon: Postgres]
+                                        ▲
+                                  (crontab a cada minuto,
+                                   ainda por instalar em algum lugar)
 ```
+
+> **Desvio do desenho original:** o SPEC (§3, §4) previa o Postgres rodando
+> **na sua própria máquina**, exposto manualmente com SSL. Para validar o
+> deploy mais rápido, usamos **Neon** (Postgres gerenciado) via a integração
+> nativa da Vercel. Funciona e mantém o mesmo contrato de dados — só muda
+> **onde** o banco roda; se depois você preferir migrar para uma máquina
+> própria, é só trocar `DATABASE_URL` e reaplicar as migrations. O restante
+> deste documento reflete o que está no ar **hoje**, com Neon.
 
 ---
 
-## 1. Postgres alcançável pela Vercel
+## Estado atual (já feito)
 
-A função serverless roda na internet: `localhost` não serve.
+| Peça | Onde | Status |
+| --- | --- | --- |
+| App + rotas serverless | Vercel, projeto `agendaapp` | ✅ no ar |
+| Banco | Neon (Postgres gerenciado), projeto `neon-amethyst-flower` | ✅ migrations aplicadas |
+| Usuário de permissão mínima | `agenda_app`, só nas duas tabelas | ✅ criado e testado |
+| Variáveis de ambiente | Vercel → Production/Preview | ✅ cadastradas |
+| Deployment Protection (SSO) | Vercel | ✅ desligada (precisa ser pública para o cron e o iPhone) |
+| Gatilho de minuto | — | ❌ **não instalado em lugar nenhum ainda** |
+| Validação no iPhone real | — | ❌ **pendente (Tarefa 11)** |
 
-1. Expor a máquina do banco com host/DNS público e a porta liberada.
-2. Ligar **SSL** no Postgres (`ssl = on`, com certificado — autoassinado serve).
-3. Aplicar as migrations e criar o usuário mínimo: ver
-   [`../db/README.md`](../db/README.md) e
-   [`../producao/usuario_minimo.sql`](../producao/usuario_minimo.sql).
+**URL de produção:** `https://agendaapp-ndmg-devs-projects.vercel.app`
+(alias estável do projeto — sobrevive a cada novo `vercel deploy --prod`).
 
-Testar de fora da sua rede:
+Confirmado por teste direto: `/api/inscrever`, `/api/sincronizar` e
+`/api/disparar` respondendo certo contra o Neon, com o usuário de permissão
+mínima.
 
-```sh
-psql "postgres://agenda_app:SENHA@SEU_HOST:5432/agenda?sslmode=require" -c "select 1"
-```
+---
+
+## 1. Onde fica o Postgres agora
+
+**Neon**, provisionado pela integração `vercel integration add neon`, já
+conectado ao projeto. Dados de acesso:
+
+- Banco: `neondb` (nome padrão do Neon — o SPEC previa `agenda`, mas o nome do
+  banco não importa para nada no código).
+- Papel `neondb_owner`: administrativo, usado só para aplicar migrations.
+  Gerenciar via `npx neonctl` (autenticado) ou o painel do Neon.
+- Papel `agenda_app`: o que a aplicação usa de fato — só `select/insert/
+  update/delete` nas duas tabelas, sem `create` no schema. Criado a partir de
+  [`../producao/usuario_minimo.sql`](../producao/usuario_minimo.sql) (adaptado
+  para o nome do banco `neondb`).
+
+Migrations já aplicadas: `db/migrations/001_init.sql` e `002_indices.sql`.
+
+**Se um dia migrar para uma máquina própria:** siga
+[`../db/README.md`](../db/README.md) (seção "Produção") do zero — expor com
+SSL, aplicar as duas migrations, rodar `usuario_minimo.sql` com o nome de
+banco `agenda` — e troque só a `DATABASE_URL` na Vercel.
 
 ## 2. Deploy do app
 
-O root do projeto na Vercel é **`app/`** — é lá que estão o `package.json` e a
-pasta `api/`. A detecção de framework (Vite) cuida do resto.
+Já feito. Para republicar depois de mudanças:
 
 ```sh
 cd app
-npx vercel            # primeira vez: vincula o projeto
-npx vercel --prod
+npx vercel deploy --prod
 ```
 
-Na tela de configuração, se perguntado: **Root Directory = `app`**.
+O projeto está vinculado (`.vercel/project.json`, não versionado). Root
+directory = `app/` (onde estão `package.json` e `api/`).
 
-### Variáveis de ambiente (painel da Vercel → Settings → Environment Variables)
+### Variáveis de ambiente cadastradas (Production e Preview)
 
-| Variável | Valor |
+| Variável | Origem |
 | --- | --- |
-| `DATABASE_URL` | `postgres://agenda_app:SENHA@SEU_HOST:5432/agenda?sslmode=require` |
-| `VAPID_PUBLIC_KEY` | a mesma do `.env` local |
-| `VAPID_PRIVATE_KEY` | idem — **só no servidor** |
-| `VAPID_SUBJECT` | `mailto:seu@email` |
-| `DISPARAR_SECRET` | o mesmo que vai no crontab |
-| `VITE_VAPID_PUBLIC_KEY` | igual à `VAPID_PUBLIC_KEY` |
-| `VITE_API_BASE` | **deixe vazio** — app e API no mesmo domínio |
+| `DATABASE_URL` | montada à mão com o papel `agenda_app` no Neon (Secret) |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | as mesmas do `.env` local (Secret) |
+| `DISPARAR_SECRET` | o mesmo do `.env` local (Secret) |
+| `VITE_VAPID_PUBLIC_KEY` | igual à `VAPID_PUBLIC_KEY` (Config) |
+| `VITE_API_BASE` | **não cadastrada** — vazia, app e API no mesmo domínio |
 
-O `.env` local não sobe no deploy. Só as `VITE_*` entram no bundle do cliente;
-`VAPID_PRIVATE_KEY` e `DISPARAR_SECRET` ficam no servidor.
+As `DATABASE_URL`/`VAPID_PRIVATE_KEY`/`DISPARAR_SECRET`/`VAPID_SUBJECT`/
+`VAPID_PUBLIC_KEY` foram cadastradas como **Secret**: o próprio Vercel CLI não
+consegue mais lê-las de volta (`vercel env pull` as mostra como
+`[SENSITIVE]`). Se precisar trocar alguma, use `vercel env rm` seguido de
+`vercel env add` — não dá para "editar".
 
-⚠️ As `VITE_*` são lidas **no build**. Mudou uma delas? Refaça o deploy.
+⚠️ As `VITE_*` são lidas **no build**. Mudou uma delas? Rode
+`vercel deploy --prod` de novo.
 
-## 3. Gatilho de minuto
+### Uma armadilha que já mordeu este deploy
 
-Na máquina do Postgres, seguir [`../producao/README.md`](../producao/README.md):
-instalar `disparar.sh`, criar `/etc/agenda-disparar.env` com a URL da Vercel e o
-segredo, e adicionar a linha do `crontab`.
+A Vercel roda `api/**/*.ts` como **ESM nativo, sem empacotar** — imports
+relativos precisam de extensão explícita (`./_lib/db.js`, não `./_lib/db`),
+porque o Node exige isso sob `moduleResolution: node16/nodenext`. Nem o
+`npm run dev` (Vite resolve sozinho) nem testes locais com `tsx` pegam esse
+erro — só apareceu como `ERR_MODULE_NOT_FOUND` no runtime real da Vercel.
+`tsconfig.api.json` já foi ajustado para `node16` para o `npm run typecheck`
+pegar isso da próxima vez.
+
+## 3. Deployment Protection
+
+Por padrão, um projeto de time na Vercel nasce atrás de **SSO** — qualquer
+acesso, incluindo `/api/disparar`, exige login na Vercel. Isso bloquearia o
+cron e o Safari do iPhone. Já foi desligado:
+
+```sh
+npx vercel project protection disable agendaapp --sso
+```
+
+## 4. Gatilho de minuto — ainda falta
+
+Precisa rodar num lugar que fique **sempre ligado** (a Vercel não serve: cron
+do Hobby é 1x/dia, sem worker permanente). Como o banco agora é o Neon e não
+uma máquina sua, o gatilho também precisa de uma casa: um VPS pequeno, uma
+máquina sua ligada 24/7, ou um serviço de cron externo (ex.: cron-job.org,
+GitHub Actions agendado) que bata na URL com o segredo.
+
+Seguir [`../producao/README.md`](../producao/README.md) — o script
+`disparar.sh` funciona igual, independente de onde o Postgres está.
+
+```sh
+API_BASE=https://agendaapp-ndmg-devs-projects.vercel.app
+DISPARAR_SECRET=<o mesmo cadastrado na Vercel>
+```
 
 Conferir:
 
 ```sh
 curl -fsS -H "Authorization: Bearer $DISPARAR_SECRET" \
-  https://SEU-APP.vercel.app/api/disparar
+  https://agendaapp-ndmg-devs-projects.vercel.app/api/disparar
 # → {"ok":true,"enviados":0,"falhas":0,"inscricoesRemovidas":0}
 ```
 
 ---
 
-## 4. No iPhone (Tarefa 11)
+## 5. No iPhone (Tarefa 11) — pendente
 
 Web Push no iOS exige **iOS 16.4+** e o PWA **instalado na tela inicial**. No
 Safari comum não funciona, e isso não é contornável.
 
-1. Abrir a URL da Vercel no **Safari** (não em outro navegador).
+1. Abrir `https://agendaapp-ndmg-devs-projects.vercel.app` no **Safari**.
 2. **Compartilhar → Adicionar à Tela de Início.**
 3. Abrir o app **pelo ícone da tela inicial**.
 4. Importar a grade (só na primeira vez).
@@ -89,7 +155,8 @@ Safari comum não funciona, e isso não é contornável.
 ### O teste que prova tudo
 
 1. Criar um atendimento **daqui a ~20 minutos** (use "só nesta data").
-2. Conferir no banco que o lembrete chegou:
+2. Conferir no banco que o lembrete chegou (via `neonctl` ou o painel do
+   Neon):
    ```sql
    select ocorrencia_uid, disparar_em, enviado from lembretes order by disparar_em limit 5;
    ```
@@ -97,6 +164,10 @@ Safari comum não funciona, e isso não é contornável.
 3. **Fechar o app** no iPhone (deslizar para cima, tirar do multitarefa).
 4. Esperar. A notificação deve chegar com **hora e nome do paciente** — montada
    no aparelho, porque o servidor mandou só o id opaco.
+
+⚠️ Sem o gatilho de minuto (item 4 acima) instalado em algum lugar, nenhum
+push vai disparar sozinho — dá para simular chamando `/api/disparar` à mão
+enquanto isso não existe.
 
 ### Se não chegar
 
@@ -119,5 +190,6 @@ minutos de folga.
 - A agenda vive **só no iPhone**. Trocar de aparelho, limpar os dados do Safari
   ou desinstalar o PWA **apaga tudo**, e o servidor não tem cópia (por desenho).
   Não existe exportação hoje — se isso preocupar, é a próxima coisa a construir.
-- O Postgres precisa continuar ligado e alcançável: se a máquina cair, os
-  lembretes param (a agenda no aparelho continua funcionando).
+- O banco (Neon) e a Vercel são serviços de terceiros: se um deles cair ou
+  mudar de plano/preço, os lembretes param (a agenda no aparelho continua
+  funcionando offline).

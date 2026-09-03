@@ -53,8 +53,11 @@ Para gerar as chaves do zero: `npx web-push generate-vapid-keys`.
 
 ## Estado
 
-Tarefas 1–10 do SPEC prontas e verificadas; 12 (trava e acabamento) pronta. A 11
-(validação no iPhone real) depende do deploy — ver [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Tarefas 1–10 e 12 do SPEC prontas e verificadas. Deploy no ar:
+**https://agendaapp-ndmg-devs-projects.vercel.app** (Vercel + Neon — ver o
+desvio do desenho original em [`docs/DEPLOY.md`](docs/DEPLOY.md)). Falta
+instalar o gatilho de minuto em algum lugar sempre ligado e validar a
+Tarefa 11 (iPhone real).
 
 **Limites conhecidos:**
 
