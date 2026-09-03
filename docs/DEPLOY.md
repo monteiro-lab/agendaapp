@@ -6,7 +6,7 @@ app fechado.
 ```
 [iPhone: PWA instalado]  ←push─  [Vercel: /api/*]  ──SQL──  [Neon: Postgres]
                                         ▲
-                          (GitHub Actions, disparar.yml, a cada minuto —
+                          (GitHub Actions, disparar.yml, a cada 5 min —
                            vigiado por vigia.yml)
 ```
 
@@ -117,11 +117,17 @@ npx vercel project protection disable agendaapp --sso
 
 ## 4. Gatilho de minuto
 
-Roda como workflow agendado do GitHub Actions
+Roda como workflow agendado do GitHub Actions, a cada 5 minutos
 ([`../.github/workflows/disparar.yml`](../.github/workflows/disparar.yml)) —
 grátis, já que o repositório está no GitHub, e não exige um servidor extra
 sempre ligado (a Vercel não serve para isso: cron do Hobby é 1x/dia, sem
 worker permanente).
+
+**Era "a cada minuto" originalmente** — mas na prática o GitHub simplesmente
+não disparou o schedule por 2h39 seguidas (confirmado pelo vigia, abaixo).
+O GitHub documenta que schedules muito frequentes podem ser atrasados ou
+pulados sob carga da plataforma; 5 em 5 minutos é uma cadência que ele
+respeita de verdade.
 
 Segredos usados (cadastrados no repositório, `Settings → Secrets and
 variables → Actions`):
@@ -138,7 +144,7 @@ vencida na última hora.
 
 **Vigia** ([`../.github/workflows/vigia.yml`](../.github/workflows/vigia.yml)):
 a cada 30 minutos, confere se `disparar.yml` teve alguma execução com sucesso
-nos últimos ~10 minutos. Se não teve, abre uma Issue no repositório (que
+nos últimos ~20 minutos. Se não teve, abre uma Issue no repositório (que
 notifica por e-mail); fecha sozinha quando o gatilho volta a rodar.
 
 > Limite honesto: se o repositório inteiro ficar 60+ dias sem nenhuma
