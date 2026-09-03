@@ -8,8 +8,11 @@ import {
   criarPaciente,
   criarRecorrencia,
   db,
+  formatarCurta,
   garantirOcorrencia,
+  pausarRecorrencia,
   propagarParaFuturas,
+  retomarRecorrencia,
   desativarRecorrencia,
   normalizarHora,
   NOME_REGRA,
@@ -18,7 +21,7 @@ import {
   type StatusOcorrencia,
 } from '../db'
 import type { Slot } from './Agenda'
-import { IconeAlerta, IconeLixeira } from './icones'
+import { IconeAlerta, IconeLixeira, IconePausa, IconeReproduzir } from './icones'
 import { useConfirmar } from './confirmar'
 
 export interface SlotEmEdicao {
@@ -64,6 +67,7 @@ export default function EditorSlot({
   const [alcance, setAlcance] = useState<'serie' | 'data'>('serie')
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [pausaAte, setPausaAte] = useState('')
 
   useEffect(() => {
     const fechaComEsc = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar()
@@ -195,6 +199,23 @@ export default function EditorSlot({
     aoFechar()
   }
 
+  async function pausar() {
+    if (!slot?.recorrencia) return
+    if (!pausaAte) {
+      setErro('Escolha até quando pausar.')
+      return
+    }
+    setErro('')
+    await pausarRecorrencia(slot.recorrencia.id, pausaAte)
+    aoFechar()
+  }
+
+  async function retomar() {
+    if (!slot?.recorrencia) return
+    await retomarRecorrencia(slot.recorrencia.id)
+    aoFechar()
+  }
+
   const ehSerie = slot?.recorrencia != null || !slot
 
   return (
@@ -319,6 +340,38 @@ export default function EditorSlot({
               />
               só nesta data
             </label>
+          </fieldset>
+        )}
+
+        {slot?.recorrencia && (
+          <fieldset className="alcance">
+            <legend>Pausa temporária</legend>
+            {slot.pausada ? (
+              <>
+                <p className="ajuste-nota">
+                  Pausado até {formatarCurta(slot.recorrencia.pausadaAte!)} — nenhum
+                  lembrete ou horário é gerado até lá.
+                </p>
+                <button type="button" onClick={() => void retomar()}>
+                  <IconeReproduzir width={16} height={16} /> Retomar agora
+                </button>
+              </>
+            ) : (
+              <>
+                <label>
+                  Pausar até (ex.: volta de férias)
+                  <input
+                    type="date"
+                    value={pausaAte}
+                    onChange={(e) => setPausaAte(e.target.value)}
+                    min={data}
+                  />
+                </label>
+                <button type="button" onClick={() => void pausar()}>
+                  <IconePausa width={16} height={16} /> Pausar série
+                </button>
+              </>
+            )}
           </fieldset>
         )}
 

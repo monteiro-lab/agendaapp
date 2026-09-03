@@ -60,6 +60,7 @@ export async function gerarOcorrencias(
     const novas: Ocorrencia[] = []
     for (const data of diasUteisNoIntervalo(de, ate)) {
       for (const r of ativasPorDia.get(diaSemanaDe(data)) ?? []) {
+        if (r.pausadaAte && data <= r.pausadaAte) continue // dentro da pausa: não materializa
         if (porRecorrencia.has(`${r.id}|${data}`)) {
           resumo.jaExistiam++
           continue
@@ -77,18 +78,23 @@ export async function gerarOcorrencias(
     }
     if (novas.length) await db.ocorrencias.bulkAdd(novas)
 
-    // Limpeza conservadora: some com o que virou órfão no futuro e nunca foi
-    // tocado. Passado e ocorrências editadas ficam como estão.
+    // Limpeza conservadora: some com o que virou órfão (série desativada) ou
+    // caiu numa pausa recém-marcada, mas só o que ainda está intocado.
+    // Passado e ocorrências editadas (realizada/cancelada/com observação)
+    // ficam como estão.
     const idsAtivos = new Set(recorrencias.filter((r) => r.ativa).map((r) => r.id))
+    const pausaPorRecorrencia = new Map(
+      recorrencias.filter((r) => r.ativa && r.pausadaAte).map((r) => [r.id, r.pausadaAte!]),
+    )
     const orfas = noPeriodo
-      .filter(
-        (o) =>
-          o.recorrenciaId !== null &&
-          !idsAtivos.has(o.recorrenciaId) &&
-          o.data >= de &&
-          o.status === 'agendada' &&
-          !o.observacoes,
-      )
+      .filter((o) => {
+        if (o.recorrenciaId === null || o.data < de || o.status !== 'agendada' || o.observacoes) {
+          return false
+        }
+        const pausadaAte = pausaPorRecorrencia.get(o.recorrenciaId)
+        const dentroDaPausa = pausadaAte !== undefined && o.data <= pausadaAte
+        return !idsAtivos.has(o.recorrenciaId) || dentroDaPausa
+      })
       .map((o) => o.id)
     if (orfas.length) {
       await db.ocorrencias.bulkDelete(orfas)

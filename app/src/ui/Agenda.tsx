@@ -46,6 +46,8 @@ export interface Slot {
   pacienteId: string | null
   nome: string
   regra: Recorrencia['regraCobranca']
+  /** A série está pausada e esta data cai dentro da pausa. */
+  pausada: boolean
 }
 
 const DIAS: DiaSemana[] = [1, 2, 3, 4, 5]
@@ -69,7 +71,10 @@ export default function Agenda() {
   const assinaturaGrade = useLiveQuery(async () => {
     const rs = await db.recorrencias.toArray()
     return rs
-      .map((r) => `${r.id}:${r.diaSemana}:${r.hora}:${r.pacienteId ?? ''}:${r.ativa ? 1 : 0}`)
+      .map(
+        (r) =>
+          `${r.id}:${r.diaSemana}:${r.hora}:${r.pacienteId ?? ''}:${r.ativa ? 1 : 0}:${r.pausadaAte ?? ''}`,
+      )
       .sort()
       .join('|')
   }, [], '')
@@ -130,6 +135,7 @@ export default function Agenda() {
           pacienteId,
           nome: pacienteId ? (nomePorId.get(pacienteId) ?? '—') : 'VAGO',
           regra: r.regraCobranca,
+          pausada: !!r.pausadaAte && data <= r.pausadaAte,
         })
       }
 
@@ -144,6 +150,7 @@ export default function Agenda() {
           pacienteId: o.pacienteId,
           nome: o.pacienteId ? (nomePorId.get(o.pacienteId) ?? '—') : 'VAGO',
           regra: 'sem_rotulo',
+          pausada: false,
         })
       }
 
@@ -257,6 +264,7 @@ export default function Agenda() {
                         'slot',
                         status,
                         vago ? 'vago' : '',
+                        slot.pausada ? 'pausado' : '',
                         slot.chave === destacado ? 'destacado' : '',
                       ].join(' ')}
                     >
@@ -270,7 +278,12 @@ export default function Agenda() {
                           {slot.regra !== 'sem_rotulo' && (
                             <span className="slot-regra">{NOME_REGRA[slot.regra]}</span>
                           )}
-                          {status !== 'agendada' && (
+                          {slot.pausada && (
+                            <span className="etiqueta pausado">
+                              pausado até {formatarCurta(slot.recorrencia!.pausadaAte!)}
+                            </span>
+                          )}
+                          {!slot.pausada && status !== 'agendada' && (
                             <span className={`etiqueta ${status}`}>{status}</span>
                           )}
                         </span>

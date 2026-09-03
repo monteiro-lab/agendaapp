@@ -149,3 +149,20 @@ export function IconeBusca(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function IconePausa(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="7" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </svg>
+  )
+}
+
+export function IconeReproduzir(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 5l12 7-12 7V5z" />
+    </svg>
+  )
+}

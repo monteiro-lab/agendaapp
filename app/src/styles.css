@@ -258,6 +258,7 @@ input, select, textarea { font: inherit; }
 .slot.realizada { border-left-color: var(--ok); }
 .slot.cancelada { border-left-color: var(--borda-forte); }
 .slot.remarcada { border-left-color: var(--aviso); }
+.slot.pausado { border-left-color: var(--tinta-fraca); opacity: .65; }
 
 .slot.vago .slot-nome { color: var(--ruim); font-weight: 600; }
 .slot.realizada .slot-nome { color: var(--tinta-media); }
@@ -279,6 +280,7 @@ input, select, textarea { font: inherit; }
 .etiqueta.cancelada { background: var(--fundo); color: var(--tinta-fraca); }
 .etiqueta.remarcada { background: var(--aviso-fundo); color: var(--aviso); }
 .etiqueta.realizada { background: var(--ok-fundo); color: var(--ok); }
+.etiqueta.pausado { background: var(--fundo); color: var(--tinta-fraca); }
 
 .slot-marcar {
   flex: none;
@@ -657,7 +659,8 @@ input, select, textarea { font: inherit; }
 .ajuste-botoes { display: flex; gap: .5rem; flex-wrap: wrap; }
 
 .ajuste-botoes button,
-.ajuste > button {
+.ajuste > button,
+.alcance > button {
   display: inline-flex;
   align-items: center;
   gap: .375rem;

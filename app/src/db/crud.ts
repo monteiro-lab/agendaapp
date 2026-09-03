@@ -80,6 +80,26 @@ export function desativarRecorrencia(id: string) {
 }
 
 /**
+ * Pausa temporária (ex.: paciente de férias): a série continua ativa, mas
+ * `gerarOcorrencias` não materializa datas dentro da pausa, e as que já
+ * existiam (ainda não realizadas/observadas) são limpas na próxima geração.
+ */
+export function pausarRecorrencia(id: string, ate: string) {
+  if (!dataValida(ate)) throw new Error(`Data inválida: ${ate}`)
+  return db.recorrencias.update(id, { pausadaAte: ate })
+}
+
+/** Remove a pausa. `.modify` porque `.update` com `undefined` não apaga o campo. */
+export function retomarRecorrencia(id: string) {
+  return db.recorrencias
+    .where('id')
+    .equals(id)
+    .modify((r) => {
+      delete r.pausadaAte
+    })
+}
+
+/**
  * A grade semanal: só as recorrências ativas, ordenadas por dia e horário.
  * (`ativa` é filtrado em memória porque boolean não é chave do IndexedDB.)
  */

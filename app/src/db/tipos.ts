@@ -35,6 +35,12 @@ export interface Recorrencia {
   hora: string
   regraCobranca: RegraCobranca
   ativa: boolean
+  /**
+   * Pausa temporária (ex.: paciente de férias): "YYYY-MM-DD", inclusive.
+   * Diferente de `ativa = false` — a série continua existindo e a pausa
+   * termina sozinha nessa data, sem precisar reativar nada manualmente.
+   */
+  pausadaAte?: string
 }
 
 /** A instância real numa data. O `id` é o UID opaco que vai para o servidor. */
