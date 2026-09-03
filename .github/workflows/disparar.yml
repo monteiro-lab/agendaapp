@@ -1,0 +1,33 @@
+name: Gatilho de minuto dos lembretes
+
+# Chama /api/disparar a cada minuto. É o "despertador" do SPEC (seção 10,
+# tarefa 10): a Vercel não serve para isso (cron do plano Hobby é 1x/dia,
+# sem worker sempre ligado), então algo precisa ficar sempre de pé chamando
+# essa rota. Aqui é o próprio GitHub Actions.
+#
+# Aviso: o cron do GitHub Actions não garante precisão de minuto — sob carga
+# da plataforma, a execução pode atrasar alguns minutos. Isso é tolerável
+# porque o lembrete já sai com 15 min de folga (SPEC §3) e /api/disparar
+# reprocessa qualquer coisa vencida na última hora.
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch: {} # permite rodar manualmente pela aba Actions
+
+jobs:
+  disparar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Chamar /api/disparar
+        env:
+          API_BASE: ${{ secrets.AGENDA_API_BASE }}
+          DISPARAR_SECRET: ${{ secrets.DISPARAR_SECRET }}
+        run: |
+          resposta=$(curl -fsS --max-time 45 \
+            -H "Authorization: Bearer ${DISPARAR_SECRET}" \
+            "${API_BASE}/api/disparar")
+          echo "resposta: $resposta"
+          # Falha o job (fica visível na aba Actions) se não vier {"ok":true,...}.
+          echo "$resposta" | grep -q '"ok":true'
