@@ -24,6 +24,12 @@ jobs:
         with:
           node-version: 20
 
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Testes
+        run: npm test
+
       - name: Puxar configuração do projeto
         run: npx vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
         env:
