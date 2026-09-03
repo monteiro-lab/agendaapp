@@ -65,13 +65,15 @@ jobs:
             --search "$titulo in:title" --state open --json number --jq '.[0].number')
 
           if [ -z "$ja_aberto" ]; then
-            gh issue create --repo "${{ github.repository }}" \
-              --title "$titulo" \
-              --body "\`disparar.yml\` não teve execução com sucesso nos últimos ~10 minutos (última: ${{ steps.checar.outputs.minutos }} min atrás, ou nenhuma). Os lembretes push podem não estar chegando.
-
-Confira a aba **Actions** do repositório. Causas comuns: o schedule foi desativado (Settings → Actions → habilitar de novo), o segredo \`DISPARAR_SECRET\` mudou na Vercel sem atualizar aqui, ou a rota \`/api/disparar\` está fora do ar.
-
-Esta Issue fecha sozinha quando o gatilho voltar a rodar."
+            corpo="\`disparar.yml\` não teve execução com sucesso nos últimos ~10 minutos"
+            corpo="$corpo (última: ${{ steps.checar.outputs.minutos }} min atrás, ou nenhuma)."
+            corpo="$corpo Os lembretes push podem não estar chegando."
+            corpo="$corpo"$'\n\n'"Confira a aba Actions do repositório. Causas comuns: o schedule"
+            corpo="$corpo foi desativado (Settings → Actions → habilitar de novo), o segredo"
+            corpo="$corpo DISPARAR_SECRET mudou na Vercel sem atualizar aqui, ou a rota"
+            corpo="$corpo /api/disparar está fora do ar."
+            corpo="$corpo"$'\n\n'"Esta Issue fecha sozinha quando o gatilho voltar a rodar."
+            gh issue create --repo "${{ github.repository }}" --title "$titulo" --body "$corpo"
           else
             echo "já existe uma issue aberta ($ja_aberto), não duplica."
           fi
