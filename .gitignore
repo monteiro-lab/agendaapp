@@ -16,3 +16,8 @@ Thumbs.db
 
 # dado de paciente — nunca em repositório público (CLAUDE.md §5)
 /Agenda Atualizada.pdf
+
+# gerado por integrações (Neon/Vercel) — docs de agente, não faz parte do app
+/app/.agents/
+/app/.claude/
+/app/skills-lock.json
