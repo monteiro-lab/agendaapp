@@ -1,0 +1,92 @@
+name: Vigia do gatilho de minuto
+
+# O GitHub avisa quando um workflow roda e falha — mas não quando um
+# workflow agendado simplesmente para de disparar (ex.: alguém desativa o
+# schedule sem querer, ou algo trava a fila de Actions). Este workflow
+# checa periodicamente se `disparar.yml` teve alguma execução com sucesso
+# recente e abre uma Issue (que notifica por e-mail) se não teve.
+#
+# Limite honesto: se o repositório inteiro ficar 60+ dias sem nenhuma
+# atividade, o GitHub suspende TODOS os workflows agendados de uma vez —
+# inclusive este. Não existe workflow agendado capaz de vigiar essa
+# suspensão específica sem algo externo sempre ligado, fora do escopo
+# gratuito usado aqui.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  actions: read
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conferir a última execução de sucesso de disparar.yml
+        id: checar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ultima=$(gh run list --repo "${{ github.repository }}" \
+            --workflow=disparar.yml --status=success --limit=1 \
+            --json createdAt --jq '.[0].createdAt')
+
+          if [ -z "$ultima" ]; then
+            echo "Nenhuma execução com sucesso encontrada ainda."
+            echo "parado=true" >> "$GITHUB_OUTPUT"
+            echo "minutos=?" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          agora=$(date -u +%s)
+          quando=$(date -u -d "$ultima" +%s)
+          diff=$(( (agora - quando) / 60 ))
+          echo "última execução com sucesso: $ultima ($diff min atrás)"
+          echo "minutos=$diff" >> "$GITHUB_OUTPUT"
+
+          # O cron roda a cada minuto; 10 min de folga cobre atraso normal
+          # da fila do GitHub Actions sob carga.
+          if [ "$diff" -gt 10 ]; then
+            echo "parado=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "parado=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Abrir alerta se estiver parado
+        if: steps.checar.outputs.parado == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          titulo="🔴 Gatilho de minuto parado"
+          ja_aberto=$(gh issue list --repo "${{ github.repository }}" \
+            --search "$titulo in:title" --state open --json number --jq '.[0].number')
+
+          if [ -z "$ja_aberto" ]; then
+            gh issue create --repo "${{ github.repository }}" \
+              --title "$titulo" \
+              --body "\`disparar.yml\` não teve execução com sucesso nos últimos ~10 minutos (última: ${{ steps.checar.outputs.minutos }} min atrás, ou nenhuma). Os lembretes push podem não estar chegando.
+
+Confira a aba **Actions** do repositório. Causas comuns: o schedule foi desativado (Settings → Actions → habilitar de novo), o segredo \`DISPARAR_SECRET\` mudou na Vercel sem atualizar aqui, ou a rota \`/api/disparar\` está fora do ar.
+
+Esta Issue fecha sozinha quando o gatilho voltar a rodar."
+          else
+            echo "já existe uma issue aberta ($ja_aberto), não duplica."
+          fi
+
+      - name: Fechar o alerta se voltou a rodar
+        if: steps.checar.outputs.parado == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          titulo="🔴 Gatilho de minuto parado"
+          aberto=$(gh issue list --repo "${{ github.repository }}" \
+            --search "$titulo in:title" --state open --json number --jq '.[0].number')
+
+          if [ -n "$aberto" ]; then
+            gh issue comment "$aberto" --repo "${{ github.repository }}" \
+              --body "O gatilho voltou a rodar normalmente (última execução há ${{ steps.checar.outputs.minutos }} min). Fechando."
+            gh issue close "$aberto" --repo "${{ github.repository }}"
+          fi

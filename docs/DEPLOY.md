@@ -6,8 +6,8 @@ app fechado.
 ```
 [iPhone: PWA instalado]  ←push─  [Vercel: /api/*]  ──SQL──  [Neon: Postgres]
                                         ▲
-                                  (crontab a cada minuto,
-                                   ainda por instalar em algum lugar)
+                          (GitHub Actions, disparar.yml, a cada minuto —
+                           vigiado por vigia.yml)
 ```
 
 > **Desvio do desenho original:** o SPEC (§3, §4) previa o Postgres rodando
@@ -29,8 +29,10 @@ app fechado.
 | Usuário de permissão mínima | `agenda_app`, só nas duas tabelas | ✅ criado e testado |
 | Variáveis de ambiente | Vercel → Production/Preview | ✅ cadastradas |
 | Deployment Protection (SSO) | Vercel | ✅ desligada (precisa ser pública para o cron e o iPhone) |
-| Gatilho de minuto | — | ❌ **não instalado em lugar nenhum ainda** |
-| Validação no iPhone real | — | ❌ **pendente (Tarefa 11)** |
+| Gatilho de minuto | GitHub Actions, `.github/workflows/disparar.yml` | ✅ rodando |
+| Vigia do gatilho | GitHub Actions, `.github/workflows/vigia.yml` | ✅ abre Issue (e-mail) se parar |
+| Deploy automático | GitHub Actions, `.github/workflows/deploy.yml` | ✅ a cada push em `main`, com testes antes |
+| Validação no iPhone real | — | ✅ **feita (Tarefa 11)** |
 
 **URL de produção:** `https://agendaapp-ndmg-devs-projects.vercel.app`
 (alias estável do projeto — sobrevive a cada novo `vercel deploy --prod`).
@@ -113,23 +115,43 @@ cron e o Safari do iPhone. Já foi desligado:
 npx vercel project protection disable agendaapp --sso
 ```
 
-## 4. Gatilho de minuto — ainda falta
+## 4. Gatilho de minuto
 
-Precisa rodar num lugar que fique **sempre ligado** (a Vercel não serve: cron
-do Hobby é 1x/dia, sem worker permanente). Como o banco agora é o Neon e não
-uma máquina sua, o gatilho também precisa de uma casa: um VPS pequeno, uma
-máquina sua ligada 24/7, ou um serviço de cron externo (ex.: cron-job.org,
-GitHub Actions agendado) que bata na URL com o segredo.
+Roda como workflow agendado do GitHub Actions
+([`../.github/workflows/disparar.yml`](../.github/workflows/disparar.yml)) —
+grátis, já que o repositório está no GitHub, e não exige um servidor extra
+sempre ligado (a Vercel não serve para isso: cron do Hobby é 1x/dia, sem
+worker permanente).
 
-Seguir [`../producao/README.md`](../producao/README.md) — o script
-`disparar.sh` funciona igual, independente de onde o Postgres está.
+Segredos usados (cadastrados no repositório, `Settings → Secrets and
+variables → Actions`):
 
-```sh
-API_BASE=https://agendaapp-ndmg-devs-projects.vercel.app
+```
+AGENDA_API_BASE=https://agendaapp-ndmg-devs-projects.vercel.app
 DISPARAR_SECRET=<o mesmo cadastrado na Vercel>
 ```
 
-Conferir:
+**Ressalva:** o cron do GitHub Actions não garante precisão de minuto — sob
+carga da plataforma pode atrasar alguns minutos. Tolerável porque o lembrete
+já sai com 15 min de folga e `/api/disparar` reprocessa qualquer coisa
+vencida na última hora.
+
+**Vigia** ([`../.github/workflows/vigia.yml`](../.github/workflows/vigia.yml)):
+a cada 30 minutos, confere se `disparar.yml` teve alguma execução com sucesso
+nos últimos ~10 minutos. Se não teve, abre uma Issue no repositório (que
+notifica por e-mail); fecha sozinha quando o gatilho volta a rodar.
+
+> Limite honesto: se o repositório inteiro ficar 60+ dias sem nenhuma
+> atividade, o GitHub suspende **todos** os workflows agendados de uma vez —
+> inclusive o vigia. Não há como um workflow agendado vigiar essa suspensão
+> específica sem algo externo sempre ligado, fora do escopo gratuito daqui.
+
+Se um dia precisar migrar para uma máquina própria (self-hosted), o caminho
+já existe pronto em [`../producao/README.md`](../producao/README.md) — o
+script `disparar.sh` + `crontab` fazem a mesma coisa, independente de onde o
+Postgres está.
+
+Conferir manualmente:
 
 ```sh
 curl -fsS -H "Authorization: Bearer $DISPARAR_SECRET" \
@@ -139,7 +161,7 @@ curl -fsS -H "Authorization: Bearer $DISPARAR_SECRET" \
 
 ---
 
-## 5. No iPhone (Tarefa 11) — pendente
+## 5. No iPhone (Tarefa 11) — já validado, roteiro para referência
 
 Web Push no iOS exige **iOS 16.4+** e o PWA **instalado na tela inicial**. No
 Safari comum não funciona, e isso não é contornável.
@@ -164,10 +186,6 @@ Safari comum não funciona, e isso não é contornável.
 3. **Fechar o app** no iPhone (deslizar para cima, tirar do multitarefa).
 4. Esperar. A notificação deve chegar com **hora e nome do paciente** — montada
    no aparelho, porque o servidor mandou só o id opaco.
-
-⚠️ Sem o gatilho de minuto (item 4 acima) instalado em algum lugar, nenhum
-push vai disparar sozinho — dá para simular chamando `/api/disparar` à mão
-enquanto isso não existe.
 
 ### Se não chegar
 
