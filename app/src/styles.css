@@ -377,6 +377,21 @@ input, select, textarea { font: inherit; }
   .folha-fundo { align-items: center; }
 }
 
+.folha-fundo.centro { align-items: center; }
+
+.folha.compacta {
+  width: min(100%, 24rem);
+  border-radius: var(--raio-grande);
+  text-align: center;
+  justify-items: center;
+}
+
+.folha.compacta .folha-botoes { width: 100%; }
+
+.confirmar-mensagem { color: var(--tinta-media); font-size: .875rem; line-height: 1.5; }
+
+.trava-icone.perigo { background: var(--ruim-fundo); color: var(--ruim); }
+
 .folha {
   width: min(100%, 27rem);
   max-height: 90vh;

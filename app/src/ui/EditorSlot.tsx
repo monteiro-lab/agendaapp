@@ -19,6 +19,7 @@ import {
 } from '../db'
 import type { Slot } from './Agenda'
 import { IconeAlerta, IconeLixeira } from './icones'
+import { useConfirmar } from './confirmar'
 
 export interface SlotEmEdicao {
   data: string
@@ -48,6 +49,7 @@ export default function EditorSlot({
 }) {
   const { slot, data, diaSemana } = em
   const pacientes = useLiveQuery(() => db.pacientes.orderBy('nome').toArray(), [], [])
+  const confirmar = useConfirmar()
 
   const [hora, setHora] = useState(slot?.hora ?? '')
   const [escolha, setEscolha] = useState(slot?.pacienteId ?? VAGO)
@@ -171,10 +173,20 @@ export default function EditorSlot({
   async function remover() {
     if (!slot) return
     if (slot.recorrencia && alcance === 'serie') {
-      if (!confirm('Remover este horário de todas as semanas?')) return
+      const ok = await confirmar({
+        mensagem: 'Remover este horário de todas as semanas?',
+        textoConfirmar: 'Remover',
+        variante: 'perigo',
+      })
+      if (!ok) return
       await desativarRecorrencia(slot.recorrencia.id)
     } else {
-      if (!confirm('Cancelar este atendimento nesta data?')) return
+      const ok = await confirmar({
+        mensagem: 'Cancelar este atendimento nesta data?',
+        textoConfirmar: 'Cancelar atendimento',
+        variante: 'perigo',
+      })
+      if (!ok) return
       const oc =
         slot.ocorrencia ??
         (slot.recorrencia ? await garantirOcorrencia(slot.recorrencia, data) : null)

@@ -7,6 +7,7 @@ import {
 } from '../push/inscricao'
 import { sincronizarLembretes } from '../push/sincronizar'
 import { IconeSino } from './icones'
+import { useConfirmar } from './confirmar'
 
 const TEXTO: Record<EstadoPush, string> = {
   'sem-suporte': 'Lembretes indisponíveis neste navegador',
@@ -21,6 +22,7 @@ export default function BotaoLembretes() {
   const [estado, setEstado] = useState<EstadoPush>('desligada')
   const [ocupado, setOcupado] = useState(false)
   const [aviso, setAviso] = useState('')
+  const confirmar = useConfirmar()
 
   useEffect(() => {
     void estadoAtual().then(setEstado)
@@ -43,7 +45,12 @@ export default function BotaoLembretes() {
   }
 
   async function desativar() {
-    if (!confirm('Desligar os lembretes deste aparelho?')) return
+    const ok = await confirmar({
+      mensagem: 'Desligar os lembretes deste aparelho?',
+      textoConfirmar: 'Desligar',
+      variante: 'perigo',
+    })
+    if (!ok) return
     setOcupado(true)
     try {
       await desativarLembretes()

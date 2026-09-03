@@ -19,6 +19,7 @@ import {
   IconeLixeira,
   IconeSubir,
 } from './icones'
+import { useConfirmar } from './confirmar'
 
 export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [tipo, setTipo] = useState<TipoTrava>('nenhuma')
@@ -28,6 +29,7 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [aviso, setAviso] = useState('')
   const [erro, setErro] = useState('')
   const arquivoRef = useRef<HTMLInputElement>(null)
+  const confirmar = useConfirmar()
 
   useEffect(() => {
     void lerConfig().then((c) => {
@@ -67,7 +69,12 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   }
 
   async function desligar() {
-    if (!confirm('Desligar a trava? A agenda abrirá sem pedir nada.')) return
+    const ok = await confirmar({
+      mensagem: 'Desligar a trava? A agenda abrirá sem pedir nada.',
+      textoConfirmar: 'Desligar',
+      variante: 'perigo',
+    })
+    if (!ok) return
     await desativarTrava()
     await recarregar('Trava desligada.')
   }
@@ -78,8 +85,14 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   }
 
   async function apagarTudo() {
-    if (!confirm('Apagar TODOS os dados deste aparelho: pacientes, grade e ocorrências?')) return
-    if (!confirm('Isto não tem volta e não existe cópia no servidor. Confirmar?')) return
+    const ok = await confirmar({
+      titulo: 'Apagar todos os dados locais',
+      mensagem:
+        'Pacientes, grade e ocorrências deste aparelho serão apagados. Isto não tem volta e não existe cópia no servidor — exporte um backup antes, se precisar.',
+      textoConfirmar: 'Apagar tudo',
+      variante: 'perigo',
+    })
+    if (!ok) return
     await limparTudo()
     setAviso('Dados apagados.')
   }
@@ -110,13 +123,14 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
     evento.target.value = '' // permite escolher o mesmo arquivo de novo depois
     if (!arquivo) return
 
-    if (
-      !confirm(
-        'Importar este backup substitui TODOS os dados atuais do aparelho (pacientes, grade e ocorrências). Continuar?',
-      )
-    ) {
-      return
-    }
+    const ok = await confirmar({
+      titulo: 'Importar backup',
+      mensagem:
+        'Isso substitui TODOS os dados atuais do aparelho (pacientes, grade e ocorrências) pelo conteúdo do arquivo.',
+      textoConfirmar: 'Importar e substituir',
+      variante: 'perigo',
+    })
+    if (!ok) return
     setErro('')
     try {
       const texto = await arquivo.text()
