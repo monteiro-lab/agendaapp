@@ -1,0 +1,51 @@
+# Dev local: app + postgres + pgadmin.
+# NÃO é alvo de deploy (a Vercel não faz deploy de compose). Em produção, o
+# Postgres roda na máquina das outras apps e o app vai para a Vercel.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agenda}
+      POSTGRES_USER: ${POSTGRES_USER:-agenda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-senha}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # aplica as migrations na primeira inicialização
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@exemplo.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+  app:
+    image: node:20
+    working_dir: /repo/app
+    command: sh -c "npm install && npm run dev -- --host"
+    ports:
+      - "5173:5173"
+    # Lê o .env da raiz (VITE_*), e sobrescreve o host do banco: dentro da rede
+    # do compose o Postgres atende em `postgres`, não em `localhost`.
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-agenda}:${POSTGRES_PASSWORD:-senha}@postgres:5432/${POSTGRES_DB:-agenda}
+    volumes:
+      # O repositório inteiro: o Vite lê o .env da raiz (envDir: '..').
+      - .:/repo
+      # node_modules próprio do contêiner — os binários de Linux não podem
+      # sobrescrever os do Windows instalados em app/node_modules.
+      - node_modules_linux:/repo/app/node_modules
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
+  node_modules_linux:

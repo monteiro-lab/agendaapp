@@ -1,0 +1,18 @@
+# deps
+node_modules/
+# build
+dist/
+.vercel/
+# env
+.env
+.env.local
+.env.*.local
+# postgres (volume local do compose)
+pgdata/
+# logs / sistema
+*.log
+.DS_Store
+Thumbs.db
+
+# dado de paciente — nunca em repositório público (CLAUDE.md §5)
+/Agenda Atualizada.pdf
