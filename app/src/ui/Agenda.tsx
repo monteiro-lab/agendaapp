@@ -25,6 +25,7 @@ import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
 import Buscar, { type DestinoBusca } from './Buscar'
 import {
+  IconeBaixar,
   IconeBusca,
   IconeCheck,
   IconeChevronDir,
@@ -247,9 +248,25 @@ export default function Agenda() {
                 data === hoje ? 'e-hoje' : '',
               ].join(' ')}
             >
-              <h2>
-                {NOME_DIA[dia]} <span>{formatarCurta(data)}</span>
-              </h2>
+              <div className="coluna-cabecalho">
+                <h2>
+                  {NOME_DIA[dia]} <span>{formatarCurta(data)}</span>
+                </h2>
+                <button
+                  className="exportar-pdf"
+                  aria-label={`Exportar agenda de ${NOME_DIA[dia]} em PDF`}
+                  onClick={() =>
+                    // Carregado sob demanda: jsPDF é pesado e a maioria das
+                    // aberturas do app nunca exporta um PDF.
+                    void import('../pdf/exportarDia').then(({ exportarAgendaDoDiaPdf }) =>
+                      exportarAgendaDoDiaPdf({ data, nomeDia: NOME_DIA[dia], slots }),
+                    )
+                  }
+                  disabled={slots.length === 0}
+                >
+                  <IconeBaixar width={14} height={14} /> PDF
+                </button>
+              </div>
 
               {slots.length === 0 && <p className="sem-slots">Nada agendado.</p>}
 

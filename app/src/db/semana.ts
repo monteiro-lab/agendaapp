@@ -47,7 +47,7 @@ export function diaSemanaDe(iso: string): DiaSemana {
 }
 
 const fmtCurta = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit' })
-const fmtLonga = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' })
+const fmtLonga = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
 
 export const formatarCurta = (iso: string): string => fmtCurta.format(isoParaData(iso))
 export const formatarLonga = (iso: string): string => fmtLonga.format(isoParaData(iso))

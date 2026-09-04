@@ -21,6 +21,11 @@ export default defineConfig({
       injectRegister: null, // registramos manualmente em src/main.tsx
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // O jsPDF importa html2canvas/dompurify sob demanda para o método
+        // .html(), que não usamos (só desenho vetorial no export de PDF).
+        // Vite separa isso em chunks próprios; sem excluir, o precache do
+        // PWA baixaria ~230KB que nunca vão rodar.
+        globIgnores: ['**/html2canvas*.js', '**/purify*.js'],
       },
       devOptions: {
         enabled: true,
