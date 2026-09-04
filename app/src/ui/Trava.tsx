@@ -4,6 +4,7 @@ import {
   conferirPin,
   lerConfig,
   marcarDestravado,
+  tempoBloqueioRestante,
   type TipoTrava,
 } from '../seguranca/trava'
 import { IconeAlerta, IconeCadeado, IconeImpressaoDigital } from './icones'
@@ -14,10 +15,24 @@ export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
   const [pin, setPin] = useState('')
   const [erro, setErro] = useState('')
   const [tentando, setTentando] = useState(false)
+  /** Segundos restantes de bloqueio; 0 = livre para tentar. */
+  const [restante, setRestante] = useState(0)
 
   useEffect(() => {
     void lerConfig().then((c) => setTipo(c.tipo))
   }, [])
+
+  // Se o app foi fechado durante um bloqueio, reabrir já mostra a contagem —
+  // não deixa "esquecer" o bloqueio nem dá uma tentativa grátis.
+  useEffect(() => {
+    void tempoBloqueioRestante().then((ms) => setRestante(Math.ceil(ms / 1000)))
+  }, [])
+
+  useEffect(() => {
+    if (restante <= 0) return
+    const t = setInterval(() => setRestante((s) => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(t)
+  }, [restante])
 
   function liberar() {
     marcarDestravado()
@@ -36,13 +51,24 @@ export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
     evento.preventDefault()
     setTentando(true)
     setErro('')
-    if (await conferirPin(pin)) liberar()
-    else {
+    const resultado = await conferirPin(pin)
+    if (resultado === 'ok') {
+      liberar()
+    } else if (resultado === 'bloqueado') {
+      const ms = await tempoBloqueioRestante()
+      setRestante(Math.ceil(ms / 1000))
+      setPin('')
+    } else {
       setErro('PIN incorreto.')
       setPin('')
+      // Já pode ter acabado de estourar o limite nessa própria tentativa.
+      const ms = await tempoBloqueioRestante()
+      if (ms > 0) setRestante(Math.ceil(ms / 1000))
     }
     setTentando(false)
   }
+
+  const bloqueado = restante > 0
 
   return (
     <div className="trava">
@@ -69,19 +95,31 @@ export default function Trava({ aoLiberar }: { aoLiberar: () => void }) {
                 autoComplete="off"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
+                disabled={bloqueado}
                 autoFocus
               />
             </label>
-            <button className="primario" type="submit" disabled={tentando || pin.length < 4}>
-              Entrar
+            <button
+              className="primario"
+              type="submit"
+              disabled={tentando || bloqueado || pin.length < 4}
+            >
+              {bloqueado ? `Tente de novo em ${restante}s` : 'Entrar'}
             </button>
           </form>
         )}
 
-        {erro && (
+        {erro && !bloqueado && (
           <p className="erro">
             <IconeAlerta width={16} height={16} />
             {erro}
+          </p>
+        )}
+
+        {bloqueado && (
+          <p className="erro">
+            <IconeAlerta width={16} height={16} />
+            Muitas tentativas erradas. Aguarde {restante}s.
           </p>
         )}
 

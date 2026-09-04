@@ -15,7 +15,16 @@ import { db } from '../db/db'
 const CHAVE_CONFIG = 'trava'
 const ITERACOES = 210_000
 
+/**
+ * Bloqueio progressivo do PIN: 5 erros seguidos trancam por 30s; se errar de
+ * novo depois de destravar, dobra (60s, 120s...). Não se aplica à biometria
+ * — Face ID / Touch ID já têm limite próprio no sistema operacional.
+ */
+const MAX_TENTATIVAS_PIN = 5
+const BLOQUEIO_BASE_MS = 30_000
+
 export type TipoTrava = 'nenhuma' | 'pin' | 'biometria'
+export type ResultadoPin = 'ok' | 'incorreto' | 'bloqueado'
 
 interface ConfigTrava {
   tipo: TipoTrava
@@ -26,6 +35,12 @@ interface ConfigTrava {
   credencialId?: string
   /** Minutos em segundo plano antes de exigir a trava de novo. */
   minutosOciosa: number
+  /** Erros seguidos do PIN desde o último acerto (ou desde o último bloqueio). */
+  tentativasFalhasPin?: number
+  /** Timestamp (ms) até quando o PIN fica bloqueado. */
+  bloqueadoAteMs?: number
+  /** Quantas vezes já estourou o limite — dobra a duração do próximo bloqueio. */
+  nivelBloqueioPin?: number
 }
 
 const PADRAO: ConfigTrava = { tipo: 'nenhuma', minutosOciosa: 5 }
@@ -73,13 +88,55 @@ export async function definirPin(pin: string): Promise<void> {
     hash: await derivar(pin, sal),
     sal: paraBase64(sal),
     credencialId: undefined,
+    tentativasFalhasPin: 0,
+    bloqueadoAteMs: undefined,
+    nivelBloqueioPin: 0,
   })
 }
 
-export async function conferirPin(pin: string): Promise<boolean> {
+/**
+ * Quanto tempo (ms) falta para o PIN destravar — 0 se não estiver bloqueado.
+ * Trava.tsx usa isto pra mostrar a contagem regressiva sem gastar uma
+ * tentativa (e sem recalcular o PBKDF2 à toa).
+ */
+export async function tempoBloqueioRestante(): Promise<number> {
   const config = await lerConfig()
-  if (config.tipo !== 'pin' || !config.hash || !config.sal) return false
-  return (await derivar(pin, deBase64(config.sal))) === config.hash
+  if (!config.bloqueadoAteMs) return 0
+  return Math.max(0, config.bloqueadoAteMs - Date.now())
+}
+
+export async function conferirPin(pin: string): Promise<ResultadoPin> {
+  const config = await lerConfig()
+  if (config.tipo !== 'pin' || !config.hash || !config.sal) return 'incorreto'
+
+  const agora = Date.now()
+  if (config.bloqueadoAteMs && agora < config.bloqueadoAteMs) return 'bloqueado'
+
+  const correto = (await derivar(pin, deBase64(config.sal))) === config.hash
+  if (correto) {
+    await gravarConfig({
+      ...config,
+      tentativasFalhasPin: 0,
+      bloqueadoAteMs: undefined,
+      nivelBloqueioPin: 0,
+    })
+    return 'ok'
+  }
+
+  const tentativas = (config.tentativasFalhasPin ?? 0) + 1
+  if (tentativas >= MAX_TENTATIVAS_PIN) {
+    const nivel = config.nivelBloqueioPin ?? 0
+    const duracaoMs = BLOQUEIO_BASE_MS * 2 ** nivel
+    await gravarConfig({
+      ...config,
+      tentativasFalhasPin: 0,
+      bloqueadoAteMs: agora + duracaoMs,
+      nivelBloqueioPin: nivel + 1,
+    })
+  } else {
+    await gravarConfig({ ...config, tentativasFalhasPin: tentativas })
+  }
+  return 'incorreto'
 }
 
 // ------------------------------------------------------------ biometria
