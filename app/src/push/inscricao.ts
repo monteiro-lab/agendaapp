@@ -108,3 +108,23 @@ export async function desativarLembretes(): Promise<void> {
   const inscricao = await obterInscricao()
   await inscricao?.unsubscribe()
 }
+
+/**
+ * Manda um push de teste na hora, via /api/testar-push — sem passar pela
+ * fila de lembretes nem esperar um atendimento real. Prova que a cadeia
+ * inteira (servidor → push → service worker → notificação) funciona.
+ */
+export async function testarNotificacao(): Promise<void> {
+  const inscricao = await obterInscricao()
+  if (!inscricao) throw new Error('Ative os lembretes primeiro.')
+
+  const resposta = await fetch(url('/api/testar-push'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ endpoint: inscricao.endpoint }),
+  })
+  if (!resposta.ok) {
+    const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null
+    throw new Error(corpo?.erro ?? `Falha ao testar (${resposta.status}).`)
+  }
+}

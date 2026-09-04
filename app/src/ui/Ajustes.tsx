@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { limparTudo, montarBackup, restaurarBackup } from '../db'
+import { testarNotificacao } from '../push/inscricao'
 import {
   ativarBiometria,
   biometriaDisponivel,
@@ -17,6 +18,7 @@ import {
   IconeCheck,
   IconeImpressaoDigital,
   IconeLixeira,
+  IconeSino,
   IconeSubir,
 } from './icones'
 import { useConfirmar } from './confirmar'
@@ -30,6 +32,7 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
   const [erro, setErro] = useState('')
   const arquivoRef = useRef<HTMLInputElement>(null)
   const confirmar = useConfirmar()
+  const [testando, setTestando] = useState(false)
 
   useEffect(() => {
     void lerConfig().then((c) => {
@@ -95,6 +98,18 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
     if (!ok) return
     await limparTudo()
     setAviso('Dados apagados.')
+  }
+
+  async function testarPush() {
+    setTestando(true)
+    setErro('')
+    try {
+      await testarNotificacao()
+      setAviso('Enviado! Se não aparecer em alguns segundos, confira as notificações do aparelho.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
+    setTestando(false)
   }
 
   async function exportar() {
@@ -219,6 +234,17 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
             criptografa os dados — o lembrete precisa ler o nome do paciente com o app
             fechado, e por isso o banco local fica legível ao sistema.
           </p>
+        </section>
+
+        <section className="ajuste">
+          <h4>Notificações</h4>
+          <p className="ajuste-nota">
+            Manda um push de teste agora, sem esperar um lembrete real — prova que a
+            cadeia inteira (servidor → aparelho → notificação) está funcionando.
+          </p>
+          <button onClick={() => void testarPush()} disabled={testando}>
+            <IconeSino width={16} height={16} /> {testando ? 'Enviando…' : 'Testar agora'}
+          </button>
         </section>
 
         <section className="ajuste">

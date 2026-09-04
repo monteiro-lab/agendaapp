@@ -66,6 +66,16 @@ async function montarAviso(uid: string | null): Promise<Aviso> {
   }
   if (!uid) return generico
 
+  // Enviado por /api/testar-push — prova que a cadeia de push funciona de
+  // ponta a ponta sem precisar esperar um lembrete real.
+  if (uid === 'teste') {
+    return {
+      titulo: 'Notificação de teste',
+      corpo: 'Se você está vendo isto, os lembretes vão funcionar normalmente.',
+      tag: 'teste',
+    }
+  }
+
   try {
     const ocorrencia = await db.ocorrencias.get(uid)
     if (!ocorrencia) return generico
