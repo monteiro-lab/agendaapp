@@ -40,9 +40,12 @@ export async function gerarOcorrencias(
 
   const resumo: ResumoGeracao = { criadas: 0, jaExistiam: 0, removidasOrfas: 0, de, ate }
 
-  await db.transaction('rw', db.recorrencias, db.ocorrencias, async () => {
+  await db.transaction('rw', db.recorrencias, db.ocorrencias, db.feriados, async () => {
     const recorrencias = await db.recorrencias.toArray()
     const noPeriodo = await db.ocorrencias.where('data').between(de, ate, true, true).toArray()
+    const feriados = new Set(
+      (await db.feriados.where('data').between(de, ate, true, true).toArray()).map((f) => f.data),
+    )
 
     const porRecorrencia = new Map<string, Ocorrencia>()
     for (const o of noPeriodo) {
@@ -59,6 +62,7 @@ export async function gerarOcorrencias(
 
     const novas: Ocorrencia[] = []
     for (const data of diasUteisNoIntervalo(de, ate)) {
+      if (feriados.has(data)) continue // dia inteiro sem atendimento: não materializa
       for (const r of ativasPorDia.get(diaSemanaDe(data)) ?? []) {
         if (r.pausadaAte && data <= r.pausadaAte) continue // dentro da pausa: não materializa
         if (porRecorrencia.has(`${r.id}|${data}`)) {

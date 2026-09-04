@@ -32,5 +32,15 @@ jobs:
             -H "Authorization: Bearer ${DISPARAR_SECRET}" \
             "${API_BASE}/api/disparar")
           echo "resposta: $resposta"
-          # Falha o job (fica visível na aba Actions) se não vier {"ok":true,...}.
-          echo "$resposta" | grep -q '"ok":true'
+
+          ok=$(echo "$resposta" | jq -r '.ok')
+          falhas=$(echo "$resposta" | jq -r '.falhas')
+
+          # Falha o job (fica visível na aba Actions, e o vigia acusa) se a
+          # chamada não deu "ok":true OU se algum envio individual falhou
+          # (ex.: chave VAPID revogada) — "ok":true sozinho não basta, porque
+          # /api/disparar responde 200 mesmo com falhas > 0.
+          if [ "$ok" != "true" ] || [ "$falhas" != "0" ]; then
+            echo "falha detectada (ok=$ok, falhas=$falhas)"
+            exit 1
+          fi

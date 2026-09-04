@@ -9,6 +9,8 @@ import {
   inicioDaSemana,
   horaEmMinutos,
   marcarStatus,
+  marcarFeriado,
+  desmarcarFeriado,
   garantirOcorrencia,
   gerarOcorrencias,
   listarProximas,
@@ -20,6 +22,7 @@ import {
   type Ocorrencia,
   type Recorrencia,
 } from '../db'
+import { useConfirmar } from './confirmar'
 import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
@@ -35,6 +38,7 @@ import {
   IconeChevronEsq,
   IconeCirculo,
   IconeEngrenagem,
+  IconeFeriado,
   IconeMais,
 } from './icones'
 import { sincronizarLembretes } from '../push/sincronizar'
@@ -96,6 +100,45 @@ export default function Agenda() {
   }, [])
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [destacado, setDestacado] = useState<string | null>(null)
+  const confirmar = useConfirmar()
+
+  const nenhumaFolhaAberta =
+    !editando &&
+    !ajustesAbertos &&
+    !pacientesAbertos &&
+    !estatisticasAbertas &&
+    !exportarAberto &&
+    !buscaAberta
+
+  // ←/→ navegam dia a dia; nas pontas da semana (seg/sex), viram a semana.
+  useEffect(() => {
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      if (!nenhumaFolhaAberta) return
+      const alvo = e.target as HTMLElement | null
+      if (alvo && ['INPUT', 'TEXTAREA', 'SELECT'].includes(alvo.tagName)) return
+      if (alvo?.isContentEditable) return
+
+      e.preventDefault()
+      if (e.key === 'ArrowLeft') {
+        if (diaAberto === 1) {
+          setSegunda((s) => somarDias(s, -7))
+          setDiaAberto(5)
+        } else {
+          setDiaAberto((d) => (d - 1) as DiaSemana)
+        }
+      } else {
+        if (diaAberto === 5) {
+          setSegunda((s) => somarDias(s, 7))
+          setDiaAberto(1)
+        } else {
+          setDiaAberto((d) => (d + 1) as DiaSemana)
+        }
+      }
+    }
+    window.addEventListener('keydown', aoTeclar)
+    return () => window.removeEventListener('keydown', aoTeclar)
+  }, [diaAberto, nenhumaFolhaAberta])
 
   const datas = useMemo(() => datasDaSemana(segunda), [segunda])
   const hoje = hojeISO()
@@ -138,6 +181,25 @@ export default function Agenda() {
     ])
     return { recorrencias, pacientes, ocorrencias }
   }, [datas[0], datas[4]])
+
+  const feriadosNaSemana = useLiveQuery(async () => {
+    const lista = await db.feriados.where('data').between(datas[0], datas[4], true, true).toArray()
+    return new Set(lista.map((f) => f.data))
+  }, [datas[0], datas[4]], new Set<string>())
+
+  async function alternarFeriado(data: string, nomeDia: string) {
+    if (feriadosNaSemana.has(data)) {
+      await desmarcarFeriado(data)
+      return
+    }
+    const ok = await confirmar({
+      titulo: 'Marcar feriado',
+      mensagem: `Marcar ${nomeDia} (${formatarCurta(data)}) como sem atendimento? Os horários já agendados nesse dia serão cancelados.`,
+      textoConfirmar: 'Marcar feriado',
+      variante: 'perigo',
+    })
+    if (ok) await marcarFeriado(data)
+  }
 
   const porDia = useMemo(() => {
     const mapa = new Map<string, Slot[]>()
@@ -279,6 +341,7 @@ export default function Agenda() {
           const data = datas[i]
           const slots = porDia.get(data) ?? []
           const ehHoje = data === hoje
+          const ehFeriado = feriadosNaSemana.has(data)
           const minutosAgora = agora.getHours() * 60 + agora.getMinutes()
           const horaAgoraTexto = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
           return (
@@ -288,13 +351,24 @@ export default function Agenda() {
                 'coluna',
                 dia === diaAberto ? 'aberta' : '',
                 data === hoje ? 'e-hoje' : '',
+                ehFeriado ? 'e-feriado' : '',
               ].join(' ')}
             >
               <h2>
                 {NOME_DIA[dia]} <span>{formatarCurta(data)}</span>
+                {ehFeriado && <span className="etiqueta cancelada">feriado</span>}
+                <button
+                  className="feriado-alternar"
+                  aria-label={ehFeriado ? 'Desmarcar feriado' : 'Marcar feriado'}
+                  title={ehFeriado ? 'Desmarcar feriado' : 'Marcar dia sem atendimento'}
+                  onClick={() => void alternarFeriado(data, NOME_DIA[dia])}
+                >
+                  <IconeFeriado width={16} height={16} />
+                </button>
               </h2>
 
-              {slots.length === 0 && <p className="sem-slots">Nada agendado.</p>}
+              {ehFeriado && <p className="sem-slots">Sem atendimento (feriado).</p>}
+              {!ehFeriado && slots.length === 0 && <p className="sem-slots">Nada agendado.</p>}
 
               <ul className="slots">
                 {comLinhaDoAgora(slots, ehHoje, minutosAgora).map((item) => {

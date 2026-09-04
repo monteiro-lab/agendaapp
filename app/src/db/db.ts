@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Config, Ocorrencia, Paciente, Recorrencia } from './tipos'
+import type { Config, Feriado, Ocorrencia, Paciente, Recorrencia } from './tipos'
 
 /**
  * Banco local (IndexedDB). Fonte da verdade da agenda: tudo o que tem nome de
@@ -10,6 +10,7 @@ export class AgendaDB extends Dexie {
   recorrencias!: EntityTable<Recorrencia, 'id'>
   ocorrencias!: EntityTable<Ocorrencia, 'id'>
   config!: EntityTable<Config, 'chave'>
+  feriados!: EntityTable<Feriado, 'data'>
 
   constructor() {
     super('agenda')
@@ -25,6 +26,11 @@ export class AgendaDB extends Dexie {
     // v2: ajustes do aparelho (trava de tela). Não guarda dado de paciente.
     this.version(2).stores({
       config: 'chave',
+    })
+
+    // v3: dias inteiros marcados como "sem atendimento" (feriado).
+    this.version(3).stores({
+      feriados: 'data',
     })
   }
 }

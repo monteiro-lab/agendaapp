@@ -1,6 +1,31 @@
 import { db } from './db'
 import type { Ocorrencia, Paciente, Recorrencia } from './tipos'
 
+/** Escapa vírgula, ponto-e-vírgula, barra invertida e quebra de linha (RFC 6350). */
+function escaparVCard(texto: string): string {
+  return texto.replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n')
+}
+
+/**
+ * Monta um arquivo vCard (.vcf) só com nome + telefone dos pacientes que têm
+ * telefone cadastrado — pra importar rápido no catálogo de contatos do
+ * celular, sem levar observações nem o resto do backup completo.
+ */
+export function montarContatosVCard(pacientes: Paciente[]): string {
+  const comTelefone = pacientes.filter((p) => p.telefone?.trim())
+  const cartoes = comTelefone.map((p) =>
+    [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${escaparVCard(p.nome)}`,
+      `N:${escaparVCard(p.nome)};;;;`,
+      `TEL;TYPE=CELL:${escaparVCard(p.telefone!.trim())}`,
+      'END:VCARD',
+    ].join('\r\n'),
+  )
+  return cartoes.join('\r\n') + (cartoes.length ? '\r\n' : '')
+}
+
 /**
  * Formato do arquivo de backup. Deliberadamente só os três dados-fonte —
  * a config da trava (`config`) fica de fora: é do aparelho, não da agenda.

@@ -100,3 +100,13 @@ export interface Config {
   chave: string
   valor: unknown
 }
+
+/**
+ * Um dia inteiro marcado como "sem atendimento" (feriado). Diferente da
+ * pausa de recorrência: afeta todos os horários daquela data, não uma série.
+ */
+export interface Feriado {
+  /** Data local "YYYY-MM-DD". Chave primária — só um registro por dia. */
+  data: string
+  criadoEm: string
+}

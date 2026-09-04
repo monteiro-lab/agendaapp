@@ -5,6 +5,7 @@ import {
   normalizarHora,
   dataValida,
   type DiaSemana,
+  type Feriado,
   type Ocorrencia,
   type Paciente,
   type Recorrencia,
@@ -131,6 +132,40 @@ export async function listarRecorrenciasDoDia(dia: DiaSemana): Promise<Recorrenc
   return grade.filter((r) => r.diaSemana === dia)
 }
 
+/**
+ * Substitui a grade do dia `destino` por uma cópia da grade do dia `origem`:
+ * apaga as recorrências ativas do destino e cria uma cópia de cada
+ * recorrência ativa da origem (mesmo horário, paciente e regra de cobrança).
+ * Não copia pausa (`pausadaAte`) — é específica do contexto de quem pausou.
+ * O histórico de ocorrências do destino não é apagado, só a recorrência que
+ * deixa de gerar novas.
+ */
+export async function copiarDiaDaSemana(
+  origem: DiaSemana,
+  destino: DiaSemana,
+): Promise<number> {
+  if (origem === destino) throw new Error('Origem e destino precisam ser dias diferentes.')
+  return db.transaction('rw', db.recorrencias, async () => {
+    const todas = await db.recorrencias.toArray()
+    const daOrigem = todas.filter((r) => r.ativa && r.diaSemana === origem)
+    const doDestino = todas.filter((r) => r.diaSemana === destino)
+
+    if (doDestino.length) {
+      await db.recorrencias.bulkDelete(doDestino.map((r) => r.id))
+    }
+    const copias: Recorrencia[] = daOrigem.map((r) => ({
+      id: novoUid(),
+      pacienteId: r.pacienteId,
+      diaSemana: destino,
+      hora: r.hora,
+      regraCobranca: r.regraCobranca,
+      ativa: true,
+    }))
+    if (copias.length) await db.recorrencias.bulkAdd(copias)
+    return copias.length
+  })
+}
+
 // --------------------------------------------------------------- ocorrências
 
 export async function criarOcorrencia(
@@ -188,6 +223,42 @@ export async function listarTodasOcorrencias(): Promise<Ocorrencia[]> {
   return lista.sort(
     (a, b) => a.data.localeCompare(b.data) || horaEmMinutos(a.hora) - horaEmMinutos(b.hora),
   )
+}
+
+// ----------------------------------------------------------------- feriados
+
+/**
+ * Marca um dia inteiro como "sem atendimento" e cancela as ocorrências já
+ * materializadas nessa data (o que ainda estava `agendada`/`remarcada`).
+ * `gerarOcorrencias` passa a não materializar nada nessa data enquanto o
+ * registro existir.
+ */
+export async function marcarFeriado(data: string): Promise<void> {
+  if (!dataValida(data)) throw new Error(`Data inválida: ${data}`)
+  await db.transaction('rw', db.feriados, db.ocorrencias, async () => {
+    await db.feriados.put({ data, criadoEm: new Date().toISOString() })
+    await db.ocorrencias
+      .where('data')
+      .equals(data)
+      .filter((o) => o.status === 'agendada' || o.status === 'remarcada')
+      .modify({ status: 'cancelada' })
+  })
+}
+
+/**
+ * Remove a marca de feriado. Não reverte as ocorrências que foram
+ * canceladas ao marcar — ficam canceladas, como qualquer outro cancelamento.
+ */
+export function desmarcarFeriado(data: string) {
+  return db.feriados.delete(data)
+}
+
+export function ehFeriado(data: string): Promise<boolean> {
+  return db.feriados.get(data).then((f) => !!f)
+}
+
+export function listarFeriados(): Promise<Feriado[]> {
+  return db.feriados.orderBy('data').toArray()
 }
 
 // ------------------------------------------------------------------- utilidades

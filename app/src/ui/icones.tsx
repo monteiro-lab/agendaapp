@@ -29,6 +29,25 @@ export function IconeChevronDir(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function IconeFeriado(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M8 15l8 -4M8 11l8 4" />
+    </svg>
+  )
+}
+
+export function IconeCopiar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+    </svg>
+  )
+}
+
 export function IconeEngrenagem(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} {...props}>

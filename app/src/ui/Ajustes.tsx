@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { limparTudo, montarBackup, restaurarBackup } from '../db'
+import {
+  copiarDiaDaSemana,
+  limparTudo,
+  listarPacientes,
+  montarBackup,
+  montarContatosVCard,
+  restaurarBackup,
+  DIAS_SEMANA,
+  NOME_DIA,
+  type DiaSemana,
+} from '../db'
 import { testarNotificacao } from '../push/inscricao'
 import {
   ativarBiometria,
@@ -11,11 +21,13 @@ import {
   marcarDestravado,
   type TipoTrava,
 } from '../seguranca/trava'
+import { definirTema, lerTema, type Tema } from '../tema'
 import {
   IconeAlerta,
   IconeBaixar,
   IconeCadeado,
   IconeCheck,
+  IconeCopiar,
   IconeGrafico,
   IconeImpressaoDigital,
   IconeLixeira,
@@ -43,6 +55,15 @@ export default function Ajustes({
   const arquivoRef = useRef<HTMLInputElement>(null)
   const confirmar = useConfirmar()
   const [testando, setTestando] = useState(false)
+  const [origemDia, setOrigemDia] = useState<DiaSemana>(1)
+  const [destinoDia, setDestinoDia] = useState<DiaSemana>(2)
+  const [copiando, setCopiando] = useState(false)
+  const [tema, setTema] = useState<Tema>(() => lerTema())
+
+  function mudarTema(valor: Tema) {
+    setTema(valor)
+    definirTema(valor)
+  }
 
   useEffect(() => {
     void lerConfig().then((c) => {
@@ -122,6 +143,29 @@ export default function Ajustes({
     setTestando(false)
   }
 
+  async function copiarDia() {
+    setErro('')
+    if (origemDia === destinoDia) {
+      setErro('Escolha dias diferentes para origem e destino.')
+      return
+    }
+    const ok = await confirmar({
+      titulo: 'Copiar dia da semana',
+      mensagem: `A grade de ${NOME_DIA[destinoDia]} será substituída pela grade de ${NOME_DIA[origemDia]}. Os horários atuais de ${NOME_DIA[destinoDia]} deixam de existir (o histórico já realizado não é afetado).`,
+      textoConfirmar: 'Copiar e substituir',
+      variante: 'perigo',
+    })
+    if (!ok) return
+    setCopiando(true)
+    try {
+      const quantidade = await copiarDiaDaSemana(origemDia, destinoDia)
+      setAviso(`${quantidade} horário(s) copiado(s) de ${NOME_DIA[origemDia]} para ${NOME_DIA[destinoDia]}.`)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
+    setCopiando(false)
+  }
+
   async function exportar() {
     setErro('')
     try {
@@ -134,6 +178,28 @@ export default function Ajustes({
       link.click()
       URL.revokeObjectURL(url)
       setAviso('Backup baixado.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function exportarContatos() {
+    setErro('')
+    try {
+      const pacientes = await listarPacientes()
+      const vcard = montarContatosVCard(pacientes)
+      if (!vcard) {
+        setErro('Nenhum paciente com telefone cadastrado.')
+        return
+      }
+      const arquivo = new Blob([vcard], { type: 'text/vcard' })
+      const url = URL.createObjectURL(arquivo)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `agenda-contatos-${new Date().toISOString().slice(0, 10)}.vcf`
+      link.click()
+      URL.revokeObjectURL(url)
+      setAviso('Contatos exportados.')
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e))
     }
@@ -176,6 +242,30 @@ export default function Ajustes({
         onClick={(e) => e.stopPropagation()}
       >
         <h3>Ajustes</h3>
+
+        <section className="ajuste">
+          <h4>Aparência</h4>
+          <div className="ajuste-botoes">
+            <button
+              className={tema === 'claro' ? 'ativo' : ''}
+              onClick={() => mudarTema('claro')}
+            >
+              Claro
+            </button>
+            <button
+              className={tema === 'escuro' ? 'ativo' : ''}
+              onClick={() => mudarTema('escuro')}
+            >
+              Escuro
+            </button>
+            <button
+              className={tema === 'sistema' ? 'ativo' : ''}
+              onClick={() => mudarTema('sistema')}
+            >
+              Sistema
+            </button>
+          </div>
+        </section>
 
         <section className="ajuste">
           <h4>Trava do app</h4>
@@ -268,6 +358,45 @@ export default function Ajustes({
         </section>
 
         <section className="ajuste">
+          <h4>Copiar dia da semana</h4>
+          <p className="ajuste-nota">
+            Substitui a grade de um dia pela grade de outro — útil quando dois dias
+            passam a ter o mesmo padrão de horários.
+          </p>
+          <div className="ajuste-botoes">
+            <label>
+              De
+              <select
+                value={origemDia}
+                onChange={(e) => setOrigemDia(Number(e.target.value) as DiaSemana)}
+              >
+                {DIAS_SEMANA.map((d) => (
+                  <option key={d} value={d}>
+                    {NOME_DIA[d]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Para
+              <select
+                value={destinoDia}
+                onChange={(e) => setDestinoDia(Number(e.target.value) as DiaSemana)}
+              >
+                {DIAS_SEMANA.map((d) => (
+                  <option key={d} value={d}>
+                    {NOME_DIA[d]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button onClick={() => void copiarDia()} disabled={copiando}>
+            <IconeCopiar width={16} height={16} /> {copiando ? 'Copiando…' : 'Copiar'}
+          </button>
+        </section>
+
+        <section className="ajuste">
           <h4>Notificações</h4>
           <p className="ajuste-nota">
             Manda um push de teste agora, sem esperar um lembrete real — prova que a
@@ -288,6 +417,9 @@ export default function Ajustes({
           <div className="ajuste-botoes">
             <button onClick={() => void exportar()}>
               <IconeBaixar width={16} height={16} /> Exportar backup (.json)
+            </button>
+            <button onClick={() => void exportarContatos()}>
+              <IconeBaixar width={16} height={16} /> Exportar contatos (.vcf)
             </button>
             <button onClick={escolherArquivo}>
               <IconeSubir width={16} height={16} /> Importar backup

@@ -26,6 +26,62 @@
   color-scheme: light;
 }
 
+/* Modo escuro: mesma paleta neutra, invertida, com o mesmo acento petróleo
+   (clareado pra manter contraste no fundo escuro). Aplicado via `sistema`
+   (segue o SO, quando não há preferência explícita) ou `[data-tema]`
+   (escolha manual em Ajustes — ver src/tema.ts). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) {
+    --fundo: #17191b;
+    --papel: #1f2224;
+    --tinta: #edeeef;
+    --tinta-media: #a8adb2;
+    --tinta-fraca: #767b80;
+    --borda: #303436;
+    --borda-forte: #3f4447;
+
+    --acento: #4fb8c4;
+    --acento-tinta: #bfe9ee;
+    --acento-fundo: #16333a;
+
+    --ok: #6fbf9a;
+    --ok-fundo: #16332a;
+    --ruim: #e28579;
+    --ruim-fundo: #3a201d;
+    --aviso: #d9ab5c;
+    --aviso-fundo: #3a2f18;
+
+    --sombra: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
+}
+
+[data-tema='escuro'] {
+  --fundo: #17191b;
+  --papel: #1f2224;
+  --tinta: #edeeef;
+  --tinta-media: #a8adb2;
+  --tinta-fraca: #767b80;
+  --borda: #303436;
+  --borda-forte: #3f4447;
+
+  --acento: #4fb8c4;
+  --acento-tinta: #bfe9ee;
+  --acento-fundo: #16333a;
+
+  --ok: #6fbf9a;
+  --ok-fundo: #16332a;
+  --ruim: #e28579;
+  --ruim-fundo: #3a201d;
+  --aviso: #d9ab5c;
+  --aviso-fundo: #3a2f18;
+
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -12px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root { height: 100%; }
@@ -195,6 +251,24 @@ input, select, textarea { font: inherit; }
 }
 
 .coluna.e-hoje h2 { color: var(--acento); }
+
+.coluna h2 .etiqueta { margin-right: auto; }
+
+.feriado-alternar {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  background: var(--papel);
+  color: var(--tinta-fraca);
+}
+
+.feriado-alternar:hover { border-color: var(--borda-forte); color: var(--tinta); }
+
+.coluna.e-feriado .feriado-alternar { color: var(--acento); border-color: var(--acento); }
 
 .sem-slots {
   margin: 0 0 .75rem;
@@ -678,6 +752,12 @@ input, select, textarea { font: inherit; }
 
 .ajuste-botoes button:hover,
 .ajuste > button:hover { border-color: var(--borda-forte); }
+
+.ajuste-botoes button.ativo {
+  border-color: var(--acento);
+  color: var(--acento-tinta);
+  background: var(--acento-fundo);
+}
 
 .ajuste-pin { display: grid; gap: .5rem; }
 
