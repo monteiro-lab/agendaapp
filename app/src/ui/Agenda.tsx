@@ -54,6 +54,25 @@ export interface Slot {
   pausada: boolean
 }
 
+/** Uma linha da lista: um horário de verdade, ou o marcador de "agora". */
+export type ItemLinha = { tipo: 'slot'; slot: Slot } | { tipo: 'agora' }
+
+/** Intercala o marcador de "agora" na posição certa — só no dia de hoje. */
+export function comLinhaDoAgora(slots: Slot[], ehHoje: boolean, minutosAgora: number): ItemLinha[] {
+  if (!ehHoje) return slots.map((slot) => ({ tipo: 'slot', slot }))
+  const itens: ItemLinha[] = []
+  let inserido = false
+  for (const slot of slots) {
+    if (!inserido && horaEmMinutos(slot.hora) > minutosAgora) {
+      itens.push({ tipo: 'agora' })
+      inserido = true
+    }
+    itens.push({ tipo: 'slot', slot })
+  }
+  if (!inserido) itens.push({ tipo: 'agora' })
+  return itens
+}
+
 const DIAS: DiaSemana[] = [1, 2, 3, 4, 5]
 const CURTO: Record<DiaSemana, string> = { 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex' }
 
@@ -68,6 +87,13 @@ export default function Agenda() {
   const [pacientesAbertos, setPacientesAbertos] = useState(false)
   const [estatisticasAbertas, setEstatisticasAbertas] = useState(false)
   const [exportarAberto, setExportarAberto] = useState(false)
+  const [agora, setAgora] = useState(() => new Date())
+
+  // Move a linha do "agora" sozinha, sem precisar recarregar a página.
+  useEffect(() => {
+    const t = setInterval(() => setAgora(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [destacado, setDestacado] = useState<string | null>(null)
 
@@ -252,6 +278,9 @@ export default function Agenda() {
         {DIAS.map((dia, i) => {
           const data = datas[i]
           const slots = porDia.get(data) ?? []
+          const ehHoje = data === hoje
+          const minutosAgora = agora.getHours() * 60 + agora.getMinutes()
+          const horaAgoraTexto = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
           return (
             <section
               key={dia}
@@ -268,7 +297,16 @@ export default function Agenda() {
               {slots.length === 0 && <p className="sem-slots">Nada agendado.</p>}
 
               <ul className="slots">
-                {slots.map((slot) => {
+                {comLinhaDoAgora(slots, ehHoje, minutosAgora).map((item) => {
+                  if (item.tipo === 'agora') {
+                    return (
+                      <li key="agora-linha" className="agora-linha" aria-hidden="true">
+                        <span className="agora-hora">{horaAgoraTexto}</span>
+                        <span className="agora-tracado" />
+                      </li>
+                    )
+                  }
+                  const slot = item.slot
                   const status = slot.ocorrencia?.status ?? 'agendada'
                   const vago = !slot.pacienteId
                   return (

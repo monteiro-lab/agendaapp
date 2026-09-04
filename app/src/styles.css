@@ -872,3 +872,41 @@ input, select, textarea { font: inherit; }
   color: var(--tinta-fraca);
   flex: none;
 }
+
+/* ------------------------------------------------------------ agora */
+
+.agora-linha {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  list-style: none;
+  padding: 0 .125rem;
+}
+
+.agora-hora {
+  flex: none;
+  font-size: .6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--acento);
+}
+
+.agora-tracado {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--acento);
+}
+
+.agora-tracado::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--acento);
+  transform: translateY(-50%);
+}
