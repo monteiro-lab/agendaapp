@@ -18,12 +18,19 @@ import {
   IconeCheck,
   IconeImpressaoDigital,
   IconeLixeira,
+  IconePessoas,
   IconeSino,
   IconeSubir,
 } from './icones'
 import { useConfirmar } from './confirmar'
 
-export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
+export default function Ajustes({
+  aoFechar,
+  aoAbrirPacientes,
+}: {
+  aoFechar: () => void
+  aoAbrirPacientes: () => void
+}) {
   const [tipo, setTipo] = useState<TipoTrava>('nenhuma')
   const [minutos, setMinutos] = useState(5)
   const [pin, setPin] = useState('')
@@ -234,6 +241,17 @@ export default function Ajustes({ aoFechar }: { aoFechar: () => void }) {
             criptografa os dados — o lembrete precisa ler o nome do paciente com o app
             fechado, e por isso o banco local fica legível ao sistema.
           </p>
+        </section>
+
+        <section className="ajuste">
+          <h4>Pacientes</h4>
+          <p className="ajuste-nota">
+            Veja e edite telefone, observações e o histórico de atendimentos de cada
+            paciente.
+          </p>
+          <button onClick={aoAbrirPacientes}>
+            <IconePessoas width={16} height={16} /> Ver e editar pacientes
+          </button>
         </section>
 
         <section className="ajuste">

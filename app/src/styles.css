@@ -775,3 +775,44 @@ input, select, textarea { font: inherit; }
   0% { box-shadow: 0 0 0 5px var(--acento-fundo); }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
+
+/* ------------------------------------------------------------ ficha */
+
+.ficha-horarios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .375rem;
+  font-size: .8125rem;
+  color: var(--tinta);
+}
+
+.ficha-horarios span { color: var(--tinta-fraca); }
+
+.ficha-historico {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .375rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.ficha-historico li {
+  display: flex;
+  align-items: center;
+  gap: .625rem;
+  padding: .5rem .625rem;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font-size: .8125rem;
+}
+
+.ficha-historico li span:first-child { flex: 1; color: var(--tinta); font-weight: 500; }
+.ficha-historico li span:nth-child(2) {
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-fraca);
+  flex: none;
+}

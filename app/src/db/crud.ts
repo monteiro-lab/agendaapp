@@ -33,6 +33,22 @@ export function buscarPaciente(id: string): Promise<Paciente | undefined> {
   return db.pacientes.get(id)
 }
 
+/** Os horários fixos ativos de um paciente, para mostrar na ficha dele. */
+export async function listarRecorrenciasDoPaciente(pacienteId: string): Promise<Recorrencia[]> {
+  const lista = await db.recorrencias.where('pacienteId').equals(pacienteId).toArray()
+  return lista
+    .filter((r) => r.ativa)
+    .sort((a, b) => a.diaSemana - b.diaSemana || horaEmMinutos(a.hora) - horaEmMinutos(b.hora))
+}
+
+/** Histórico de atendimentos de um paciente, mais recente primeiro. */
+export async function listarHistoricoPaciente(pacienteId: string): Promise<Ocorrencia[]> {
+  const lista = await db.ocorrencias.where('pacienteId').equals(pacienteId).toArray()
+  return lista.sort(
+    (a, b) => b.data.localeCompare(a.data) || horaEmMinutos(b.hora) - horaEmMinutos(a.hora),
+  )
+}
+
 /**
  * Remove o paciente e **desvincula** seus horários (viram VAGO) em vez de
  * apagá-los: a grade da semana continua existindo, só fica com o slot livre.

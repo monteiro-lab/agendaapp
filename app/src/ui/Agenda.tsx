@@ -23,6 +23,7 @@ import {
 import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
+import Pacientes from './Pacientes'
 import Buscar, { type DestinoBusca } from './Buscar'
 import {
   IconeBaixar,
@@ -62,6 +63,7 @@ export default function Agenda() {
   })
   const [editando, setEditando] = useState<SlotEmEdicao | null>(null)
   const [ajustesAbertos, setAjustesAbertos] = useState(false)
+  const [pacientesAbertos, setPacientesAbertos] = useState(false)
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [destacado, setDestacado] = useState<string | null>(null)
 
@@ -332,7 +334,16 @@ export default function Agenda() {
       </div>
 
       {editando && <EditorSlot em={editando} aoFechar={() => setEditando(null)} />}
-      {ajustesAbertos && <Ajustes aoFechar={() => setAjustesAbertos(false)} />}
+      {ajustesAbertos && (
+        <Ajustes
+          aoFechar={() => setAjustesAbertos(false)}
+          aoAbrirPacientes={() => {
+            setAjustesAbertos(false)
+            setPacientesAbertos(true)
+          }}
+        />
+      )}
+      {pacientesAbertos && <Pacientes aoFechar={() => setPacientesAbertos(false)} />}
       {buscaAberta && (
         <Buscar aoFechar={() => setBuscaAberta(false)} aoEscolher={irParaResultado} />
       )}

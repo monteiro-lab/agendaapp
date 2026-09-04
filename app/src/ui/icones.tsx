@@ -166,3 +166,14 @@ export function IconeReproduzir(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function IconePessoas(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 20c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6" />
+      <circle cx="17" cy="8.5" r="2.3" />
+      <path d="M15 14.3c2.4.4 4.5 2.6 4.5 5.7" />
+    </svg>
+  )
+}
