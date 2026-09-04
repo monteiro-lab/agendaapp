@@ -177,3 +177,12 @@ export function IconePessoas(props: SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
+export function IconeGrafico(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M4 20V10M11 20V4M18 20v-7" />
+      <path d="M3 20h18" />
+    </svg>
+  )
+}

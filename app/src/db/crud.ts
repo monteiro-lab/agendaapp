@@ -182,6 +182,14 @@ export function listarDoDia(data: string): Promise<Ocorrencia[]> {
   return listarPorPeriodo(data, data)
 }
 
+/** Todas as ocorrências já existentes, sem limite de data — para estatísticas. */
+export async function listarTodasOcorrencias(): Promise<Ocorrencia[]> {
+  const lista = await db.ocorrencias.toArray()
+  return lista.sort(
+    (a, b) => a.data.localeCompare(b.data) || horaEmMinutos(a.hora) - horaEmMinutos(b.hora),
+  )
+}
+
 // ------------------------------------------------------------------- utilidades
 
 /** Apaga tudo do aparelho. Usado pelo "limpar dados" e pelos testes manuais. */

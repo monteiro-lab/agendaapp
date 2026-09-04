@@ -16,6 +16,7 @@ import {
   IconeBaixar,
   IconeCadeado,
   IconeCheck,
+  IconeGrafico,
   IconeImpressaoDigital,
   IconeLixeira,
   IconePessoas,
@@ -27,9 +28,11 @@ import { useConfirmar } from './confirmar'
 export default function Ajustes({
   aoFechar,
   aoAbrirPacientes,
+  aoAbrirEstatisticas,
 }: {
   aoFechar: () => void
   aoAbrirPacientes: () => void
+  aoAbrirEstatisticas: () => void
 }) {
   const [tipo, setTipo] = useState<TipoTrava>('nenhuma')
   const [minutos, setMinutos] = useState(5)
@@ -251,6 +254,16 @@ export default function Ajustes({
           </p>
           <button onClick={aoAbrirPacientes}>
             <IconePessoas width={16} height={16} /> Ver e editar pacientes
+          </button>
+        </section>
+
+        <section className="ajuste">
+          <h4>Estatísticas</h4>
+          <p className="ajuste-nota">
+            Total de atendimentos e taxa de comparecimento, por mês ou desde o início.
+          </p>
+          <button onClick={aoAbrirEstatisticas}>
+            <IconeGrafico width={16} height={16} /> Ver estatísticas
           </button>
         </section>
 

@@ -11,6 +11,7 @@ import {
   listarHistoricoPaciente,
   listarPorPeriodo,
   listarRecorrenciasDoPaciente,
+  listarTodasOcorrencias,
   marcarStatus,
   pausarRecorrencia,
   removerPaciente,
@@ -159,5 +160,21 @@ describe('ocorrências', () => {
 
     const [lida] = await listarPorPeriodo('2026-09-01', '2026-09-30')
     expect(lida.status).toBe('realizada')
+  })
+
+  it('listarTodasOcorrencias não tem limite de data, ordenada por data e hora', async () => {
+    await criarOcorrencia({ recorrenciaId: null, pacienteId: null, data: '2020-01-01', hora: '09:00' })
+    await criarOcorrencia({ recorrenciaId: null, pacienteId: null, data: '2030-12-31', hora: '09:00' })
+    const meio = await criarOcorrencia({
+      recorrenciaId: null,
+      pacienteId: null,
+      data: '2026-09-18',
+      hora: '08:00',
+    })
+
+    const todas = await listarTodasOcorrencias()
+
+    expect(todas).toHaveLength(3)
+    expect(todas[1].id).toBe(meio.id)
   })
 })

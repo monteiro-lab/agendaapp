@@ -816,3 +816,59 @@ input, select, textarea { font: inherit; }
   color: var(--tinta-fraca);
   flex: none;
 }
+
+/* ------------------------------------------------------- estatísticas */
+
+.estatistica-resumo {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: .5rem;
+}
+
+.estatistica-resumo li {
+  display: grid;
+  gap: .125rem;
+  padding: .625rem;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  text-align: center;
+}
+
+.estatistica-resumo strong { font-size: 1.25rem; color: var(--acento); }
+.estatistica-resumo span {
+  font-size: .6875rem;
+  color: var(--tinta-fraca);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.estatistica-pacientes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .375rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.estatistica-pacientes li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .625rem;
+  padding: .5rem .625rem;
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  font-size: .8125rem;
+}
+
+.estatistica-nome { color: var(--tinta); font-weight: 500; }
+.estatistica-detalhe {
+  font-variant-numeric: tabular-nums;
+  color: var(--tinta-fraca);
+  flex: none;
+}

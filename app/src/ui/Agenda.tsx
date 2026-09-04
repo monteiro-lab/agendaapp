@@ -24,6 +24,7 @@ import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
 import Pacientes from './Pacientes'
+import Estatisticas from './Estatisticas'
 import ExportarPdf from './ExportarPdf'
 import Buscar, { type DestinoBusca } from './Buscar'
 import {
@@ -65,6 +66,7 @@ export default function Agenda() {
   const [editando, setEditando] = useState<SlotEmEdicao | null>(null)
   const [ajustesAbertos, setAjustesAbertos] = useState(false)
   const [pacientesAbertos, setPacientesAbertos] = useState(false)
+  const [estatisticasAbertas, setEstatisticasAbertas] = useState(false)
   const [exportarAberto, setExportarAberto] = useState(false)
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [destacado, setDestacado] = useState<string | null>(null)
@@ -337,9 +339,16 @@ export default function Agenda() {
             setAjustesAbertos(false)
             setPacientesAbertos(true)
           }}
+          aoAbrirEstatisticas={() => {
+            setAjustesAbertos(false)
+            setEstatisticasAbertas(true)
+          }}
         />
       )}
       {pacientesAbertos && <Pacientes aoFechar={() => setPacientesAbertos(false)} />}
+      {estatisticasAbertas && (
+        <Estatisticas aoFechar={() => setEstatisticasAbertas(false)} />
+      )}
       {exportarAberto && (
         <ExportarPdf segundaAtual={segunda} aoFechar={() => setExportarAberto(false)} />
       )}
