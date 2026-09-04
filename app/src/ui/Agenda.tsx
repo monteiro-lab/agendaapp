@@ -24,6 +24,7 @@ import EditorSlot, { type SlotEmEdicao } from './EditorSlot'
 import BotaoLembretes from './BotaoLembretes'
 import Ajustes from './Ajustes'
 import Pacientes from './Pacientes'
+import ExportarPdf from './ExportarPdf'
 import Buscar, { type DestinoBusca } from './Buscar'
 import {
   IconeBaixar,
@@ -64,6 +65,7 @@ export default function Agenda() {
   const [editando, setEditando] = useState<SlotEmEdicao | null>(null)
   const [ajustesAbertos, setAjustesAbertos] = useState(false)
   const [pacientesAbertos, setPacientesAbertos] = useState(false)
+  const [exportarAberto, setExportarAberto] = useState(false)
   const [buscaAberta, setBuscaAberta] = useState(false)
   const [destacado, setDestacado] = useState<string | null>(null)
 
@@ -201,14 +203,8 @@ export default function Agenda() {
           </button>
           <button
             className="ajustes-abrir"
-            aria-label="Exportar a semana em PDF"
-            onClick={() =>
-              // Carregado sob demanda: jsPDF é pesado e a maioria das
-              // aberturas do app nunca exporta um PDF.
-              void import('../pdf/exportarSemana').then(({ exportarAgendaDaSemanaPdf }) =>
-                exportarAgendaDaSemanaPdf({ segunda, datas, porDia }),
-              )
-            }
+            aria-label="Exportar PDF"
+            onClick={() => setExportarAberto(true)}
           >
             <IconeBaixar />
           </button>
@@ -344,6 +340,9 @@ export default function Agenda() {
         />
       )}
       {pacientesAbertos && <Pacientes aoFechar={() => setPacientesAbertos(false)} />}
+      {exportarAberto && (
+        <ExportarPdf segundaAtual={segunda} aoFechar={() => setExportarAberto(false)} />
+      )}
       {buscaAberta && (
         <Buscar aoFechar={() => setBuscaAberta(false)} aoEscolher={irParaResultado} />
       )}

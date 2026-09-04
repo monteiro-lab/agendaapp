@@ -1,22 +1,31 @@
 import { jsPDF } from 'jspdf'
 import {
+  db,
+  diaSemanaDe,
+  datasDaSemana,
+  inicioDaSemana,
+  somarDias,
   FAIXAS_GRADE,
   NOME_DIA,
   NOME_REGRA,
   formatarCurta,
   horaEmMinutos,
   type DiaSemana,
+  type Ocorrencia,
   type RegraCobranca,
   type StatusOcorrencia,
 } from '../db'
 import type { Slot } from '../ui/Agenda'
 
 /**
- * Exporta a semana em PDF, no mesmo layout visual da grade original
+ * Exporta a agenda em PDF, no mesmo layout visual da grade original
  * ("Agenda Atualizada.pdf", usada para semear os dados na Tarefa 3):
  * tabela Hora × Seg–Sex, uma cor por dia, cabeçalho arredondado com os
  * pontinhos decorativos. Gerado inteiramente no aparelho, como o backup —
  * nada sai do dispositivo até a usuária mandar salvar.
+ *
+ * Funciona pra qualquer período: uma semana vira uma tabela; um mês vira
+ * várias tabelas, uma por semana, cada uma começando numa página nova.
  */
 
 const LARGURA_PAGINA = 297 // A4 paisagem
@@ -59,6 +68,77 @@ const NOME_STATUS_CURTO: Partial<Record<StatusOcorrencia, string>> = {
   cancelada: 'Cancelada',
   remarcada: 'Remarcada',
 }
+const NOME_REGRA_CURTA = (r: RegraCobranca) => NOME_REGRA[r]
+
+// ---------------------------------------------------------------- dados
+
+/**
+ * Resolve os slots de cada data lendo o banco diretamente — não depende do
+ * estado da tela (que só tem a semana visível), então funciona para
+ * qualquer período. Espelha a mesma lógica de montagem que a tela usa
+ * (Agenda.tsx), propositalmente reimplementada aqui: manter o export de
+ * PDF independente evita acoplar o desenho do documento ao estado da UI.
+ */
+async function resolverSlotsPorPeriodo(datas: string[]): Promise<Map<string, Slot[]>> {
+  const [recorrencias, pacientes, ocorrencias] = await Promise.all([
+    db.recorrencias.toArray(),
+    db.pacientes.toArray(),
+    db.ocorrencias.where('data').between(datas[0], datas[datas.length - 1], true, true).toArray(),
+  ])
+
+  const nomePorId = new Map(pacientes.map((p) => [p.id, p.nome]))
+  const ocPorRecorrencia = new Map<string, Ocorrencia>()
+  const avulsas: Ocorrencia[] = []
+  for (const o of ocorrencias) {
+    if (o.recorrenciaId) ocPorRecorrencia.set(`${o.recorrenciaId}|${o.data}`, o)
+    else avulsas.push(o)
+  }
+
+  const mapa = new Map<string, Slot[]>()
+  for (const data of datas) {
+    const dia = diaSemanaDe(data)
+    const slots: Slot[] = []
+
+    for (const r of recorrencias) {
+      if (!r.ativa || r.diaSemana !== dia) continue
+      const oc = ocPorRecorrencia.get(`${r.id}|${data}`) ?? null
+      const pacienteId = oc?.pacienteId ?? r.pacienteId
+      slots.push({
+        chave: r.id,
+        data,
+        hora: oc?.hora ?? r.hora,
+        recorrencia: r,
+        ocorrencia: oc,
+        pacienteId,
+        nome: pacienteId ? (nomePorId.get(pacienteId) ?? '—') : 'VAGO',
+        regra: r.regraCobranca,
+        pausada: !!r.pausadaAte && data <= r.pausadaAte,
+      })
+    }
+    for (const o of avulsas) {
+      if (o.data !== data) continue
+      slots.push({
+        chave: o.id,
+        data,
+        hora: o.hora,
+        recorrencia: null,
+        ocorrencia: o,
+        pacienteId: o.pacienteId,
+        nome: o.pacienteId ? (nomePorId.get(o.pacienteId) ?? '—') : 'VAGO',
+        regra: 'sem_rotulo',
+        pausada: false,
+      })
+    }
+
+    slots.sort(
+      (a, b) => horaEmMinutos(a.hora) - horaEmMinutos(b.hora) || a.nome.localeCompare(b.nome),
+    )
+    mapa.set(data, slots)
+  }
+  return mapa
+}
+
+// ------------------------------------------------------------- desenho
 
 function corDots(doc: jsPDF, x: number, y: number) {
   const raio = 1.8
@@ -79,7 +159,6 @@ function desenharCabecalho(doc: jsPDF, subtitulo: string): number {
 
   doc.setFillColor(...NAVY)
   doc.roundedRect(x, y, largura, alturaCartao, 4, 4, 'F')
-  // A faixa dourada à esquerda do cartão, como no original.
   doc.setFillColor(...DOURADO)
   doc.roundedRect(x + 3, y + 4, 2, alturaCartao - 8, 1, 1, 'F')
 
@@ -137,7 +216,6 @@ function desenharRodape(doc: jsPDF, pagina: number, totalPaginas: number) {
   }
 }
 
-/** Altura que a célula de um dia precisa para caber todos os pacientes daquele horário. */
 function alturaDaCelula(slots: Slot[]): number {
   if (slots.length === 0) return 9
   const alturaPorBloco = slots.map((s) => (s.regra !== 'sem_rotulo' || s.pausada ? 8.2 : 5.2))
@@ -190,21 +268,9 @@ function desenharBlocoPaciente(doc: jsPDF, slot: Slot, x: number, y: number, lar
   return proximaLinha
 }
 
-const NOME_REGRA_CURTA = (r: RegraCobranca) => NOME_REGRA[r]
-
-export interface ExportarSemanaOpcoes {
-  /** Segunda-feira da semana, "YYYY-MM-DD" — vai no nome do arquivo. */
-  segunda: string
-  /** As 5 datas úteis da semana, na ordem seg→sex. */
-  datas: string[]
-  /** Slots já resolvidos por data (o mesmo que a tela usa para desenhar a grade). */
-  porDia: Map<string, Slot[]>
-}
-
-export function exportarAgendaDaSemanaPdf({ segunda, datas, porDia }: ExportarSemanaOpcoes): void {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
-
-  const subtitulo = `${formatarCurta(datas[0])} a ${formatarCurta(datas[4])}`
+/** Desenha uma semana (cabeçalho + tabela) a partir da posição atual do documento. */
+function desenharSemana(doc: jsPDF, datas: string[], porDia: Map<string, Slot[]>): void {
+  const subtitulo = `${formatarCurta(datas[0])} a ${formatarCurta(datas[datas.length - 1])}`
   let y = desenharCabecalho(doc, subtitulo)
   y = desenharCabecalhoTabela(doc, y)
 
@@ -229,27 +295,21 @@ export function exportarAgendaDaSemanaPdf({ segunda, datas, porDia }: ExportarSe
   }
 
   const LIMITE_INFERIOR = ALTURA_PAGINA - 12
-  let indicePagina = 1
-  const paginas = [1]
   let zebra = 0
 
   for (const hora of horas) {
     const celulasPorDia = datas.map((data) => porDiaEHora.get(`${data}|${hora}`) ?? [])
-    const temConteudo = celulasPorDia.some((c) => c.length > 0)
-    if (!temConteudo) continue // hora fora do padrão sem ninguém marcado nessa semana
+    if (!celulasPorDia.some((c) => c.length > 0)) continue // ninguém marcado nesse horário
 
     const alturaLinha = Math.max(...celulasPorDia.map(alturaDaCelula))
 
     if (y + alturaLinha > LIMITE_INFERIOR) {
       doc.addPage()
-      indicePagina++
-      paginas.push(indicePagina)
       y = desenharCabecalho(doc, subtitulo)
       y = desenharCabecalhoTabela(doc, y)
       zebra = 0
     }
 
-    // Hora, na coluna da esquerda.
     doc.setFillColor(...HORA_FUNDO)
     doc.rect(MARGEM, y, LARGURA_HORA, alturaLinha, 'F')
     doc.setFont('helvetica', 'bold')
@@ -269,7 +329,6 @@ export function exportarAgendaDaSemanaPdf({ segunda, datas, porDia }: ExportarSe
       x += LARGURA_DIA
     })
 
-    // Linha divisória sutil sob a linha inteira.
     doc.setDrawColor(...BANDA_ESCURA)
     doc.setLineWidth(0.2)
     doc.line(MARGEM, y + alturaLinha, LARGURA_PAGINA - MARGEM, y + alturaLinha)
@@ -277,11 +336,40 @@ export function exportarAgendaDaSemanaPdf({ segunda, datas, porDia }: ExportarSe
     y += alturaLinha
     zebra++
   }
+}
 
-  for (const pagina of paginas) {
-    doc.setPage(pagina)
-    desenharRodape(doc, pagina, paginas.length)
+// ---------------------------------------------------------------- export
+
+export interface ExportarAgendaOpcoes {
+  /** "YYYY-MM-DD". Datas fora de seg–sex são arredondadas para a semana. */
+  de: string
+  ate: string
+}
+
+export async function exportarAgendaPdf({ de, ate }: ExportarAgendaOpcoes): Promise<void> {
+  const primeiraSegunda = inicioDaSemana(de)
+  const ultimaSegunda = inicioDaSemana(ate)
+
+  const semanas: string[] = []
+  for (let s = primeiraSegunda; s <= ultimaSegunda; s = somarDias(s, 7)) semanas.push(s)
+  if (semanas.length === 0) semanas.push(primeiraSegunda)
+
+  const todasAsDatas = semanas.flatMap((s) => datasDaSemana(s))
+  const porDia = await resolverSlotsPorPeriodo(todasAsDatas)
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
+  semanas.forEach((segunda, i) => {
+    if (i > 0) doc.addPage()
+    desenharSemana(doc, datasDaSemana(segunda), porDia)
+  })
+
+  const totalPaginas = doc.getNumberOfPages()
+  for (let p = 1; p <= totalPaginas; p++) {
+    doc.setPage(p)
+    desenharRodape(doc, p, totalPaginas)
   }
 
-  doc.save(`agenda-semana-${segunda}.pdf`)
+  const nomeArquivo =
+    semanas.length === 1 ? `agenda-semana-${primeiraSegunda}.pdf` : `agenda-${de}-a-${ate}.pdf`
+  doc.save(nomeArquivo)
 }
